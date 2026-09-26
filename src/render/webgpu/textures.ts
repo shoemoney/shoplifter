@@ -6,7 +6,12 @@ export interface AtlasRegion {
   y: number;
   width: number;
   height: number;
+  /** World size in metres the sprite was drawn for, as [width, height]. */
+  meters?: [number, number] | undefined;
 }
+
+/** Atlas art is authored at this scale; a region without a declared size falls back to it. */
+export const PIXELS_PER_METRE = 16;
 
 export interface AtlasManifest {
   image: string;
@@ -35,10 +40,18 @@ export const regionToUv = (
   v1: (region.y + region.height - inset) / atlasHeight,
 });
 
+export interface WorldSize {
+  width: number;
+  height: number;
+}
+
 export interface LoadedAtlas {
   texture: GPUTexture;
   manifest: AtlasManifest;
   uv: (name: string) => UvRect;
+  /** World size in metres for a region, so sprites are never drawn at the wrong aspect. */
+  size: (name: string) => WorldSize;
+  has: (name: string) => boolean;
   /** True when the real image failed to load and a generated placeholder is standing in. */
   placeholder: boolean;
 }
@@ -150,5 +163,20 @@ export const loadAtlas = async (
     return rect;
   };
 
-  return { texture, manifest, uv, placeholder };
+  const sizeCache = new Map<string, WorldSize>();
+  const size = (name: string): WorldSize => {
+    const cached = sizeCache.get(name);
+    if (cached) return cached;
+    const region = manifest.regions[name];
+    if (!region) throw new Error(`Atlas region "${name}" is not in the manifest.`);
+    const value: WorldSize = region.meters
+      ? { width: region.meters[0], height: region.meters[1] }
+      : { width: region.width / PIXELS_PER_METRE, height: region.height / PIXELS_PER_METRE };
+    sizeCache.set(name, value);
+    return value;
+  };
+
+  const has = (name: string): boolean => manifest.regions[name] !== undefined;
+
+  return { texture, manifest, uv, size, has, placeholder };
 };

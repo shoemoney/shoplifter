@@ -5,6 +5,12 @@ export const atlasRegionSchema = z.object({
   y: z.number().int().min(0),
   width: z.number().int().positive(),
   height: z.number().int().positive(),
+  /**
+   * World size in metres the sprite was drawn for, as [width, height]. Carried in the manifest
+   * so the renderer scales art instead of guessing — guessing is how a 2.4:1 helicopter ends up
+   * drawn into a 2:1 box and looks subtly wrong everywhere.
+   */
+  meters: z.tuple([z.number().positive(), z.number().positive()]).optional(),
 });
 
 export const atlasManifestSchema = z

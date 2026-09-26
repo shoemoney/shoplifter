@@ -117,21 +117,13 @@ const SCENE_SEED = 0x63686f70; // "chop"
 const TERRAIN_COLUMNS = 168;
 /** Layer depth of the ground. Anything numerically smaller draws in front of it. */
 const TERRAIN_DEPTH = 0.7;
-const TERRAIN_DEPTH_METRES = 80;
+const TERRAIN_DEPTH_METRES = 26;
+/** Vertical slices of the ground sprite, cycled across columns to break up the grain. */
+const TERRAIN_SLICES = 8;
 /** How much ground the camera may show below the local terrain, metres. */
 const GROUND_MARGIN_METRES = 7;
 /** Seconds between rotor-wash bursts. Every frame floods the pool and buries the terrain. */
 const WASH_INTERVAL_SECONDS = 0.09;
-
-/** Colour per enemy kind, so threats stay distinguishable at a glance. */
-const ENEMY_TINT: Record<string, [number, number, number]> = {
-  rifleInfantry: [0.95, 0.42, 0.35],
-  rpgInfantry: [1, 0.55, 0.2],
-  lightTank: [0.72, 0.4, 0.32],
-  aaGun: [0.85, 0.35, 0.55],
-  jet: [0.8, 0.85, 1],
-  drone: [1, 0.72, 0.3],
-};
 
 export class GameApp {
   private readonly host: RenderHost;
@@ -331,15 +323,13 @@ export class GameApp {
       texture: this.atlas.texture,
       label: 'world-sprites',
     });
-    // Soft kinds take the glow disc; hard kinds take the solid quad.
-    const glow = this.atlas.uv('glow');
-    const solid = this.atlas.uv('white');
+    // Each particle kind gets art that matches what it is, now that the atlas has it.
     this.particleUv = {
-      [ParticleKind.Dust]: glow,
-      [ParticleKind.Smoke]: glow,
-      [ParticleKind.Flash]: glow,
-      [ParticleKind.Spark]: solid,
-      [ParticleKind.Debris]: solid,
+      [ParticleKind.Dust]: this.atlas.uv('glow'),
+      [ParticleKind.Smoke]: this.atlas.uv('smoke'),
+      [ParticleKind.Flash]: this.atlas.uv('glow'),
+      [ParticleKind.Spark]: this.atlas.uv('spark'),
+      [ParticleKind.Debris]: this.atlas.uv('white'),
     };
   }
 
@@ -584,21 +574,75 @@ export class GameApp {
   ): void {
     const groundUv = atlas.uv('ground');
     const columnWidth = (view.halfWidth * 2 + 4) / TERRAIN_COLUMNS;
+    // Each column samples a different vertical slice of the ground sprite. Sampling the whole
+    // 32-pixel-wide texture into a 7-pixel column squashed the grain into a single pattern that
+    // then repeated at column frequency — visible as vertical banding across the terrain.
+    const sliceWidth = (groundUv.u1 - groundUv.u0) / TERRAIN_SLICES;
     for (let i = 0; i < TERRAIN_COLUMNS; i++) {
       const columnX = view.centerX - view.halfWidth - 2 + (i + 0.5) * columnWidth;
       const height = this.world.terrain.heightAt(columnX);
+      // Keyed to world position, not column index, so the grain stays put as the camera pans
+      // instead of crawling along with it.
+      const slice = Math.abs(Math.round(columnX / columnWidth)) % TERRAIN_SLICES;
       batch.draw({
         x: columnX,
         y: height - TERRAIN_DEPTH_METRES / 2,
         width: columnWidth * 1.04,
         height: TERRAIN_DEPTH_METRES,
         depth: TERRAIN_DEPTH,
-        uv: groundUv,
+        uv: {
+          u0: groundUv.u0 + slice * sliceWidth,
+          v0: groundUv.v0,
+          u1: groundUv.u0 + (slice + 1) * sliceWidth,
+          v1: groundUv.v1,
+        },
       });
     }
   }
 
   /** Authored pads get a visible marker; a level surface you cannot see is not an affordance. */
+  /**
+   * Draws an atlas sprite at the world size it was authored for. Every sprite goes through
+   * here so nothing is ever scaled by a number typed at the call site — that is how a sprite
+   * ends up subtly the wrong shape in one place and right in another.
+   */
+  private sprite(
+    batch: SpriteBatch,
+    atlas: LoadedAtlas,
+    name: string,
+    x: number,
+    y: number,
+    options: {
+      depth: number;
+      rotation?: number;
+      mirrored?: boolean;
+      scale?: number;
+      width?: number;
+      height?: number;
+      r?: number;
+      g?: number;
+      b?: number;
+      a?: number;
+    },
+  ): void {
+    const uv = atlas.uv(name);
+    const size = atlas.size(name);
+    const scale = options.scale ?? 1;
+    batch.draw({
+      x,
+      y,
+      width: options.width ?? size.width * scale,
+      height: options.height ?? size.height * scale,
+      rotation: options.rotation ?? 0,
+      depth: options.depth,
+      uv: options.mirrored ? { u0: uv.u1, v0: uv.v0, u1: uv.u0, v1: uv.v1 } : uv,
+      ...(options.r === undefined ? {} : { r: options.r }),
+      ...(options.g === undefined ? {} : { g: options.g }),
+      ...(options.b === undefined ? {} : { b: options.b }),
+      ...(options.a === undefined ? {} : { a: options.a }),
+    });
+  }
+
   private drawLandingZones(
     batch: SpriteBatch,
     atlas: LoadedAtlas,
@@ -607,18 +651,46 @@ export class GameApp {
     for (const zone of this.world.mission.landingZones) {
       if (Math.abs(zone.x - view.centerX) > view.halfWidth + zone.width) continue;
       const base = zone.kind === 'base';
-      batch.draw({
-        x: zone.x,
-        y: this.world.terrain.heightAt(zone.x) + 0.18,
-        width: zone.width,
-        height: 0.36,
-        depth: 0.68,
-        uv: atlas.uv('white'),
-        r: base ? 0.45 : 0.38,
-        g: base ? 0.95 : 0.72,
-        b: base ? 0.75 : 0.95,
-        a: 0.55,
-      });
+      const pad = atlas.size('landing_pad');
+      const groundY = this.world.terrain.heightAt(zone.x) + pad.height / 2;
+      // Tiled at the marking's own size rather than stretched across the zone: a 90 m pad
+      // scaled from a 4 m sprite turns the painted dashes into 9 m bars.
+      const tiles = Math.max(1, Math.round(zone.width / pad.width));
+      for (let i = 0; i < tiles; i++) {
+        const tileX = zone.x - zone.width / 2 + (i + 0.5) * (zone.width / tiles);
+        this.sprite(batch, atlas, 'landing_pad', tileX, groundY, {
+          depth: 0.68,
+          width: zone.width / tiles,
+          r: base ? 1 : 0.82,
+          g: base ? 0.92 : 0.9,
+          b: base ? 0.7 : 1,
+          a: 0.95,
+        });
+      }
+    }
+  }
+
+  /** Civilian state to sprite pose. The pose has to read at 28 pixels without colour. */
+  private civilianSprite(civilian: (typeof this.world.civilians)[number]): string {
+    const variant = civilian.id % 4;
+    if (civilian.state === 'dead' || civilian.knockedDownFor > 0) {
+      return `civilian_${variant}_down`;
+    }
+    if (civilian.wounded) return 'civilian_wounded';
+    switch (civilian.state) {
+      case 'boarding':
+        return `civilian_${variant}_board`;
+      case 'waitForSpace':
+        return `civilian_${variant}_wave`;
+      case 'seekCover':
+      case 'panic':
+      case 'approachLz':
+        // Two-frame walk cycle on simulated time, so it reads as movement, not a slide.
+        return `civilian_${variant}_${Math.floor(this.world.elapsed * 6) % 2 === 0 ? 'run_a' : 'run_b'}`;
+      case 'released':
+        return `civilian_${variant}_wave`;
+      default:
+        return `civilian_${variant}_idle`;
     }
   }
 
@@ -627,25 +699,22 @@ export class GameApp {
     atlas: LoadedAtlas,
     view: { centerX: number; halfWidth: number },
   ): void {
-    const uv = atlas.uv('civilian');
     for (const civilian of this.world.civilians) {
       if (civilian.state === 'rescued' || civilian.state === 'aboard') continue;
       if (Math.abs(civilian.position.x - view.centerX) > view.halfWidth + 2) continue;
+
+      const name = this.civilianSprite(civilian);
+      const size = atlas.size(name);
       const dead = civilian.state === 'dead';
-      const down = civilian.knockedDownFor > 0;
-      batch.draw({
-        x: civilian.position.x,
-        y: civilian.position.y + (dead || down ? 0.35 : 0.9),
-        width: dead || down ? 1.6 : 0.8,
-        height: dead || down ? 0.5 : 1.8,
-        rotation: dead || down ? Math.PI / 2 : 0,
+      // Sprites are drawn from their centre, so a standing figure is lifted half its height to
+      // put its feet on the ground rather than its waist.
+      const grounded = civilian.state === 'dead' || civilian.knockedDownFor > 0;
+      this.sprite(batch, atlas, name, civilian.position.x, civilian.position.y + size.height / 2, {
         depth: 0.3,
-        uv,
-        r: dead ? 0.4 : civilian.wounded ? 1 : 0.85,
-        g: dead ? 0.22 : civilian.wounded ? 0.55 : 1,
-        b: dead ? 0.2 : civilian.wounded ? 0.45 : 0.9,
-        a: dead ? 0.7 : 1,
+        mirrored: civilian.position.x > this.world.player.position.x,
+        ...(dead ? { r: 0.55, g: 0.4, b: 0.38, a: 0.8 } : {}),
       });
+      void grounded;
     }
   }
 
@@ -657,22 +726,85 @@ export class GameApp {
     for (const runtime of this.world.liveEnemies) {
       const enemy = runtime.enemy;
       if (Math.abs(enemy.position.x - view.centerX) > view.halfWidth + 8) continue;
-      const tint = ENEMY_TINT[enemy.kind] ?? [1, 1, 1];
-      const air = enemy.kind === 'jet' || enemy.kind === 'drone';
-      const size = enemy.kind === 'lightTank' || enemy.kind === 'aaGun' ? 3.4 : air ? 4.2 : 1.2;
-      batch.draw({
-        x: enemy.position.x,
-        y: enemy.position.y + size * 0.3,
-        width: size,
-        height: air ? size * 0.4 : size * 0.6,
-        depth: 0.26,
-        uv: atlas.uv(air ? 'helicopter' : 'white'),
-        r: tint[0],
-        g: tint[1],
-        b: tint[2],
-        // A suppressed enemy is visibly out of the fight — that is the point of suppressing it.
-        a: runtime.morale.suppressedFor > 0 ? 0.45 : 1,
-      });
+
+      const suppressed = runtime.morale.suppressedFor > 0;
+      const facePlayer = enemy.position.x > this.world.player.position.x;
+      // A suppressed enemy is visibly out of the fight — that is the point of suppressing it
+      // instead of killing it, and the player has to be able to see that it worked.
+      const alpha = suppressed ? 0.45 : 1;
+
+      switch (enemy.kind) {
+        case 'lightTank': {
+          const hull = atlas.size('tank_hull');
+          this.sprite(
+            batch,
+            atlas,
+            'tank_hull',
+            enemy.position.x,
+            enemy.position.y + hull.height / 2,
+            {
+              depth: 0.27,
+              mirrored: facePlayer,
+              a: alpha,
+            },
+          );
+          // The turret traverses independently, which is what makes its firing line readable.
+          const turret = atlas.size('tank_turret');
+          this.sprite(
+            batch,
+            atlas,
+            'tank_turret',
+            enemy.position.x,
+            enemy.position.y + hull.height + turret.height * 0.1,
+            {
+              depth: 0.26,
+              mirrored: facePlayer,
+              rotation: (facePlayer ? -1 : 1) * enemy.turretAngle,
+              a: alpha,
+            },
+          );
+          break;
+        }
+        case 'aaGun': {
+          const size = atlas.size('aa_gun');
+          this.sprite(
+            batch,
+            atlas,
+            'aa_gun',
+            enemy.position.x,
+            enemy.position.y + size.height / 2,
+            {
+              depth: 0.27,
+              mirrored: facePlayer,
+              a: alpha,
+            },
+          );
+          break;
+        }
+        case 'jet':
+          this.sprite(batch, atlas, 'jet', enemy.position.x, enemy.position.y, {
+            depth: 0.24,
+            mirrored: facePlayer,
+            a: alpha,
+          });
+          break;
+        case 'drone':
+          this.sprite(batch, atlas, 'drone', enemy.position.x, enemy.position.y, {
+            depth: 0.24,
+            a: alpha,
+          });
+          break;
+        default: {
+          const name = enemy.kind === 'rpgInfantry' ? 'infantry_rpg' : 'infantry_rifle';
+          const size = atlas.size(name);
+          this.sprite(batch, atlas, name, enemy.position.x, enemy.position.y + size.height / 2, {
+            depth: 0.28,
+            mirrored: facePlayer,
+            a: alpha,
+          });
+          break;
+        }
+      }
     }
   }
 
@@ -681,26 +813,25 @@ export class GameApp {
     atlas: LoadedAtlas,
     view: { centerX: number; halfWidth: number },
   ): void {
-    const uv = atlas.uv('glow');
     const pool = this.world.projectiles;
     for (let i = 0; i < pool.capacity; i++) {
       if (!pool.isActive(i)) continue;
       const px = pool.positionX(i);
       if (Math.abs(px - view.centerX) > view.halfWidth + 4) continue;
-      const hostile = pool.teamAt(i) === 'hostile';
+
       const kind = pool.kindAt(i);
-      const big = kind === 'rocket' || kind === 'rpg' || kind === 'jetMissile';
-      batch.draw({
-        x: px,
-        y: pool.positionY(i),
-        width: big ? 1.1 : 0.45,
-        height: big ? 0.45 : 0.28,
-        rotation: Math.atan2(pool.velocityY(i), pool.velocityX(i)),
-        depth: 0.24,
-        uv,
-        r: hostile ? 1 : 0.7,
-        g: hostile ? 0.5 : 1,
-        b: hostile ? 0.3 : 0.75,
+      const heavy = kind === 'rocket' || kind === 'rpg' || kind === 'jetMissile';
+      const hostile = pool.teamAt(i) === 'hostile';
+      const rotation = Math.atan2(pool.velocityY(i), pool.velocityX(i));
+      const flying = Math.abs(rotation) > Math.PI / 2;
+
+      this.sprite(batch, atlas, heavy ? 'rocket' : 'bullet', px, pool.positionY(i), {
+        depth: 0.23,
+        rotation: flying ? rotation + Math.PI : rotation,
+        mirrored: flying,
+        // Hostile fire reads red, the player's own reads pale — the PRD wants threat colour
+        // to be redundant with shape, not the only signal.
+        ...(hostile ? { r: 1, g: 0.55, b: 0.4 } : {}),
       });
     }
   }
@@ -714,33 +845,35 @@ export class GameApp {
   ): void {
     const player = this.world.player;
     const destroyed = player.destroyedFor !== null;
-    const bodyUv = atlas.uv('helicopter');
-    const facingScale = this.renderFacing;
-    const foreshorten = 0.34 + 0.66 * Math.abs(facingScale);
-    const mirrored = facingScale < 0;
+    const facing = this.renderFacing;
+    const mirrored = facing < 0;
+    // Near the foreground plane the aircraft is drawn head on rather than squashed sideways.
+    const headOn = Math.abs(facing) < 0.45;
+    const name = destroyed ? 'helicopter_wreck' : headOn ? 'helicopter_front' : 'helicopter';
 
-    batch.draw({
-      x,
-      y,
-      width: 6 * foreshorten,
-      height: 3,
-      rotation: pitch * (mirrored ? -1 : 1),
+    this.sprite(batch, atlas, name, x, y, {
       depth: 0.2,
-      uv: mirrored ? { u0: bodyUv.u1, v0: bodyUv.v0, u1: bodyUv.u0, v1: bodyUv.v1 } : bodyUv,
-      r: destroyed ? 0.45 : 1,
-      g: destroyed ? 0.3 : 1,
-      b: destroyed ? 0.28 : 1,
+      rotation: headOn ? 0 : pitch * (mirrored ? -1 : 1),
+      mirrored: mirrored && !headOn,
+      ...(destroyed ? {} : {}),
     });
-    if (!destroyed) {
-      batch.draw({
-        x,
-        y: y + 1.5,
-        width: 8 * Math.abs(Math.cos(this.rotorAngle)) + 0.6,
-        height: 0.35,
-        rotation: pitch * 0.4,
-        depth: 0.18,
-        uv: atlas.uv('rotor'),
-        a: 0.75,
+
+    if (destroyed) return;
+
+    // Rotor disc: width pulses with the blade cycle so it reads as turning rather than as a bar.
+    const disc = atlas.size('rotor');
+    const spin = Math.abs(Math.cos(this.rotorAngle));
+    this.sprite(batch, atlas, 'rotor', x, y + (headOn ? 1.55 : 1.5), {
+      depth: 0.18,
+      rotation: headOn ? 0 : pitch * 0.35,
+      width: disc.width * (0.45 + 0.55 * spin),
+      height: disc.height,
+      a: 0.55 + 0.3 * (1 - spin),
+    });
+    if (!headOn) {
+      this.sprite(batch, atlas, 'tail_rotor', x + (mirrored ? 2.55 : -2.55), y + 0.5, {
+        depth: 0.19,
+        a: 0.8,
       });
     }
   }

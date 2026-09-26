@@ -26,10 +26,11 @@ jobs:
       - run: npm run typecheck
       - run: npm run test
       - run: npm run build
-      - name: Placeholder atlas is reproducible
+      - name: Sprite atlas matches its generator
         run: |
-          python3 tools/make_placeholder_atlas.py
-          git diff --exit-code -- public/assets/atlas.png
+          python3 -m pip install --quiet --disable-pip-version-check Pillow
+          python3 tools/make_atlas.py
+          git diff --exit-code -- public/assets/atlas.png src/content/atlases/core.json
 
   e2e:
     name: playwright (webgpu)

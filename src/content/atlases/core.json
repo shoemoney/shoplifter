@@ -1,15 +1,517 @@
 {
   "image": "/assets/atlas.png",
-  "width": 128,
-  "height": 128,
+  "width": 512,
+  "height": 512,
   "regions": {
-    "white": { "x": 0, "y": 0, "width": 32, "height": 32 },
-    "glow": { "x": 32, "y": 0, "width": 32, "height": 32 },
-    "helicopter": { "x": 64, "y": 0, "width": 48, "height": 24 },
-    "rotor": { "x": 0, "y": 32, "width": 64, "height": 6 },
-    "civilian": { "x": 0, "y": 40, "width": 8, "height": 16 },
-    "ground": { "x": 16, "y": 40, "width": 32, "height": 16 },
-    "star": { "x": 56, "y": 40, "width": 8, "height": 8 },
-    "checker": { "x": 0, "y": 64, "width": 64, "height": 64 }
+    "aa_gun": {
+      "x": 432,
+      "y": 74,
+      "width": 34,
+      "height": 30,
+      "meters": [
+        2.125,
+        1.875
+      ]
+    },
+    "bullet": {
+      "x": 132,
+      "y": 106,
+      "width": 8,
+      "height": 4,
+      "meters": [
+        0.5,
+        0.25
+      ]
+    },
+    "civilian_0_board": {
+      "x": 472,
+      "y": 44,
+      "width": 14,
+      "height": 28,
+      "meters": [
+        0.875,
+        1.75
+      ]
+    },
+    "civilian_0_down": {
+      "x": 488,
+      "y": 44,
+      "width": 14,
+      "height": 28,
+      "meters": [
+        0.875,
+        1.75
+      ]
+    },
+    "civilian_0_idle": {
+      "x": 408,
+      "y": 44,
+      "width": 14,
+      "height": 28,
+      "meters": [
+        0.875,
+        1.75
+      ]
+    },
+    "civilian_0_run_a": {
+      "x": 440,
+      "y": 44,
+      "width": 14,
+      "height": 28,
+      "meters": [
+        0.875,
+        1.75
+      ]
+    },
+    "civilian_0_run_b": {
+      "x": 456,
+      "y": 44,
+      "width": 14,
+      "height": 28,
+      "meters": [
+        0.875,
+        1.75
+      ]
+    },
+    "civilian_0_wave": {
+      "x": 424,
+      "y": 44,
+      "width": 14,
+      "height": 28,
+      "meters": [
+        0.875,
+        1.75
+      ]
+    },
+    "civilian_1_board": {
+      "x": 66,
+      "y": 74,
+      "width": 14,
+      "height": 28,
+      "meters": [
+        0.875,
+        1.75
+      ]
+    },
+    "civilian_1_down": {
+      "x": 82,
+      "y": 74,
+      "width": 14,
+      "height": 28,
+      "meters": [
+        0.875,
+        1.75
+      ]
+    },
+    "civilian_1_idle": {
+      "x": 2,
+      "y": 74,
+      "width": 14,
+      "height": 28,
+      "meters": [
+        0.875,
+        1.75
+      ]
+    },
+    "civilian_1_run_a": {
+      "x": 34,
+      "y": 74,
+      "width": 14,
+      "height": 28,
+      "meters": [
+        0.875,
+        1.75
+      ]
+    },
+    "civilian_1_run_b": {
+      "x": 50,
+      "y": 74,
+      "width": 14,
+      "height": 28,
+      "meters": [
+        0.875,
+        1.75
+      ]
+    },
+    "civilian_1_wave": {
+      "x": 18,
+      "y": 74,
+      "width": 14,
+      "height": 28,
+      "meters": [
+        0.875,
+        1.75
+      ]
+    },
+    "civilian_2_board": {
+      "x": 162,
+      "y": 74,
+      "width": 14,
+      "height": 28,
+      "meters": [
+        0.875,
+        1.75
+      ]
+    },
+    "civilian_2_down": {
+      "x": 178,
+      "y": 74,
+      "width": 14,
+      "height": 28,
+      "meters": [
+        0.875,
+        1.75
+      ]
+    },
+    "civilian_2_idle": {
+      "x": 98,
+      "y": 74,
+      "width": 14,
+      "height": 28,
+      "meters": [
+        0.875,
+        1.75
+      ]
+    },
+    "civilian_2_run_a": {
+      "x": 130,
+      "y": 74,
+      "width": 14,
+      "height": 28,
+      "meters": [
+        0.875,
+        1.75
+      ]
+    },
+    "civilian_2_run_b": {
+      "x": 146,
+      "y": 74,
+      "width": 14,
+      "height": 28,
+      "meters": [
+        0.875,
+        1.75
+      ]
+    },
+    "civilian_2_wave": {
+      "x": 114,
+      "y": 74,
+      "width": 14,
+      "height": 28,
+      "meters": [
+        0.875,
+        1.75
+      ]
+    },
+    "civilian_3_board": {
+      "x": 258,
+      "y": 74,
+      "width": 14,
+      "height": 28,
+      "meters": [
+        0.875,
+        1.75
+      ]
+    },
+    "civilian_3_down": {
+      "x": 274,
+      "y": 74,
+      "width": 14,
+      "height": 28,
+      "meters": [
+        0.875,
+        1.75
+      ]
+    },
+    "civilian_3_idle": {
+      "x": 194,
+      "y": 74,
+      "width": 14,
+      "height": 28,
+      "meters": [
+        0.875,
+        1.75
+      ]
+    },
+    "civilian_3_run_a": {
+      "x": 226,
+      "y": 74,
+      "width": 14,
+      "height": 28,
+      "meters": [
+        0.875,
+        1.75
+      ]
+    },
+    "civilian_3_run_b": {
+      "x": 242,
+      "y": 74,
+      "width": 14,
+      "height": 28,
+      "meters": [
+        0.875,
+        1.75
+      ]
+    },
+    "civilian_3_wave": {
+      "x": 210,
+      "y": 74,
+      "width": 14,
+      "height": 28,
+      "meters": [
+        0.875,
+        1.75
+      ]
+    },
+    "civilian_wounded": {
+      "x": 290,
+      "y": 74,
+      "width": 14,
+      "height": 28,
+      "meters": [
+        0.875,
+        1.75
+      ]
+    },
+    "drone": {
+      "x": 76,
+      "y": 106,
+      "width": 26,
+      "height": 26,
+      "meters": [
+        1.625,
+        1.625
+      ]
+    },
+    "flare": {
+      "x": 160,
+      "y": 106,
+      "width": 10,
+      "height": 10,
+      "meters": [
+        0.625,
+        0.625
+      ]
+    },
+    "glow": {
+      "x": 172,
+      "y": 106,
+      "width": 32,
+      "height": 32,
+      "meters": [
+        2.0,
+        2.0
+      ]
+    },
+    "ground": {
+      "x": 240,
+      "y": 106,
+      "width": 32,
+      "height": 64,
+      "meters": [
+        2.0,
+        4.0
+      ]
+    },
+    "helicopter": {
+      "x": 2,
+      "y": 2,
+      "width": 96,
+      "height": 40,
+      "meters": [
+        6.0,
+        2.5
+      ]
+    },
+    "helicopter_front": {
+      "x": 100,
+      "y": 2,
+      "width": 56,
+      "height": 40,
+      "meters": [
+        3.5,
+        2.5
+      ]
+    },
+    "helicopter_wreck": {
+      "x": 158,
+      "y": 2,
+      "width": 96,
+      "height": 40,
+      "meters": [
+        6.0,
+        2.5
+      ]
+    },
+    "infantry_rifle": {
+      "x": 306,
+      "y": 74,
+      "width": 16,
+      "height": 28,
+      "meters": [
+        1.0,
+        1.75
+      ]
+    },
+    "infantry_rpg": {
+      "x": 324,
+      "y": 74,
+      "width": 16,
+      "height": 28,
+      "meters": [
+        1.0,
+        1.75
+      ]
+    },
+    "jet": {
+      "x": 2,
+      "y": 106,
+      "width": 72,
+      "height": 22,
+      "meters": [
+        4.5,
+        1.375
+      ]
+    },
+    "landing_pad": {
+      "x": 274,
+      "y": 106,
+      "width": 64,
+      "height": 16,
+      "meters": [
+        4.0,
+        1.0
+      ]
+    },
+    "radar_mast": {
+      "x": 104,
+      "y": 106,
+      "width": 26,
+      "height": 44,
+      "meters": [
+        1.625,
+        2.75
+      ]
+    },
+    "rocket": {
+      "x": 142,
+      "y": 106,
+      "width": 16,
+      "height": 6,
+      "meters": [
+        1.0,
+        0.375
+      ]
+    },
+    "rotor": {
+      "x": 256,
+      "y": 2,
+      "width": 128,
+      "height": 14,
+      "meters": [
+        8.0,
+        0.875
+      ]
+    },
+    "rotor_blade_0": {
+      "x": 2,
+      "y": 44,
+      "width": 128,
+      "height": 7,
+      "meters": [
+        8.0,
+        0.438
+      ]
+    },
+    "rotor_blade_1": {
+      "x": 132,
+      "y": 44,
+      "width": 128,
+      "height": 6,
+      "meters": [
+        8.0,
+        0.375
+      ]
+    },
+    "rotor_blade_2": {
+      "x": 262,
+      "y": 44,
+      "width": 128,
+      "height": 6,
+      "meters": [
+        8.0,
+        0.375
+      ]
+    },
+    "smoke": {
+      "x": 214,
+      "y": 106,
+      "width": 24,
+      "height": 24,
+      "meters": [
+        1.5,
+        1.5
+      ]
+    },
+    "spark": {
+      "x": 206,
+      "y": 106,
+      "width": 6,
+      "height": 6,
+      "meters": [
+        0.375,
+        0.375
+      ]
+    },
+    "star": {
+      "x": 350,
+      "y": 106,
+      "width": 8,
+      "height": 8,
+      "meters": [
+        0.5,
+        0.5
+      ]
+    },
+    "tail_rotor": {
+      "x": 392,
+      "y": 44,
+      "width": 14,
+      "height": 14,
+      "meters": [
+        0.875,
+        0.875
+      ]
+    },
+    "tank_hull": {
+      "x": 342,
+      "y": 74,
+      "width": 52,
+      "height": 22,
+      "meters": [
+        3.25,
+        1.375
+      ]
+    },
+    "tank_turret": {
+      "x": 396,
+      "y": 74,
+      "width": 34,
+      "height": 12,
+      "meters": [
+        2.125,
+        0.75
+      ]
+    },
+    "white": {
+      "x": 340,
+      "y": 106,
+      "width": 8,
+      "height": 8,
+      "meters": [
+        0.5,
+        0.5
+      ]
+    }
   }
 }
