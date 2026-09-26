@@ -49,9 +49,9 @@ test.describe('boot and render', () => {
     });
     const stats = await readStats(page);
 
-    expect(stats.sprites, 'the stress scene should batch over a thousand sprites').toBeGreaterThan(
-      1000,
-    );
+    // The scene is real content now — terrain columns, civilians, threats, particles — so the
+    // assertion is about batching, not about hitting an inflated sprite count.
+    expect(stats.sprites, 'the world should batch hundreds of sprites').toBeGreaterThan(200);
     expect(stats.draws, 'one atlas should mean one draw call').toBeLessThanOrEqual(2);
     expect(stats.tick, 'the fixed-step sim should have advanced').toBeGreaterThan(60);
     expect(stats.placeholderAssets, 'the committed atlas should load').toBe(false);
@@ -138,7 +138,7 @@ test.describe('boot and render', () => {
 
     const after = await readStats(page);
     expect(after.recoveryAttempts, 'recovery should have run at least once').toBeGreaterThan(0);
-    expect(after.sprites, 'sprites should render again after the rebuild').toBeGreaterThan(1000);
+    expect(after.sprites, 'sprites should render again after the rebuild').toBeGreaterThan(200);
     // Device loss logs are expected; validation errors are not.
     expect(errors.filter((e) => e.includes('uncaptured'))).toEqual([]);
   });

@@ -8,6 +8,7 @@ import { defaultBindings } from '@/input/rebinding.js';
 import { Camera, defaultCameraTuning } from '@/render/camera.js';
 import { RenderHost, type RecoveryEvent } from '@/render/webgpu/deviceRecovery.js';
 import { SpriteBatch } from '@/render/webgpu/spriteBatch.js';
+import { ParticleKind, ParticleSystem, type ParticleAtlasUv } from '@/render/webgpu/particles.js';
 import { loadAtlas, type LoadedAtlas } from '@/render/webgpu/textures.js';
 import { loadCoreAtlasManifest } from '@/content/loaders/atlasLoader.js';
 import { BalanceStore, loadFlightBalance } from '@/content/loaders/balanceLoader.js';
@@ -118,6 +119,8 @@ const TERRAIN_DEPTH = 0.7;
 const TERRAIN_DEPTH_METRES = 80;
 /** How much ground the camera may show below the local terrain, metres. */
 const GROUND_MARGIN_METRES = 7;
+/** Seconds between rotor-wash bursts. Every frame floods the pool and buries the terrain. */
+const WASH_INTERVAL_SECONDS = 0.09;
 
 /** Colour per enemy kind, so threats stay distinguishable at a glance. */
 const ENEMY_TINT: Record<string, [number, number, number]> = {
@@ -143,6 +146,9 @@ export class GameApp {
   private readonly background: BackgroundSprite[] = [];
   private readonly tracked: TrackedEntity[] = [];
   private readonly save: SaveStore;
+  private readonly particles: ParticleSystem;
+  private particleUv: ParticleAtlasUv | null = null;
+  private washCooldown = 0;
   private readonly mission: ReturnType<typeof loadMission>;
   private readonly pauseScreen: PauseScreen;
   private readonly debriefScreen: DebriefScreen;
@@ -214,6 +220,9 @@ export class GameApp {
     this.gamepad = new GamepadSource(this.actions, bindings.gamepad);
     this.overlay = new DebugOverlay(elements.overlay);
     this.hud = new HudView(elements.hud);
+    // Its own RNG stream: particles are presentation, and must never consume draws the
+    // simulation's determinism depends on.
+    this.particles = new ParticleSystem({ rng: new Rng(SCENE_SEED ^ 0x9e3779b9) });
     this.pauseScreen = new PauseScreen(elements.pause, {
       resume: () => this.togglePause(),
       restart: () => this.restart(),
@@ -238,8 +247,19 @@ export class GameApp {
     });
     // Taking a hit shakes the frame. Scaled — or zeroed — by the accessibility setting, which
     // is why the scale is applied here rather than baked into the camera.
-    world.events.on('mission:playerHit', () => this.camera.addShake(0.25 * this.shakeScale));
-    world.events.on('mission:enemyDestroyed', () => this.camera.addShake(0.08 * this.shakeScale));
+    world.events.on('mission:playerHit', () => {
+      this.camera.addShake(0.25 * this.shakeScale);
+      this.particles.emitImpactSparks(world.player.position.x, world.player.position.y);
+      this.particles.emitSmokeTrail(world.player.position.x, world.player.position.y);
+    });
+    world.events.on('mission:enemyDestroyed', (event) => {
+      this.camera.addShake(0.08 * this.shakeScale);
+      const payload = event.payload as { id?: number };
+      const runtime = world.liveEnemies.find((candidate) => candidate.enemy.id === payload.id);
+      const at = runtime?.enemy.position ?? world.player.position;
+      this.particles.emitExplosion(at.x, at.y);
+      this.particles.emitDebris(at.x, at.y);
+    });
     return world;
   }
 
@@ -299,6 +319,16 @@ export class GameApp {
       texture: this.atlas.texture,
       label: 'world-sprites',
     });
+    // Soft kinds take the glow disc; hard kinds take the solid quad.
+    const glow = this.atlas.uv('glow');
+    const solid = this.atlas.uv('white');
+    this.particleUv = {
+      [ParticleKind.Dust]: glow,
+      [ParticleKind.Smoke]: glow,
+      [ParticleKind.Flash]: glow,
+      [ParticleKind.Spark]: solid,
+      [ParticleKind.Debris]: solid,
+    };
   }
 
   private onRecovery(event: RecoveryEvent): void {
@@ -327,38 +357,11 @@ export class GameApp {
         fieldWidth: 240,
       });
     }
-    for (let i = 0; i < 46; i++) {
-      const height = rng.range(14, 46);
-      this.background.push({
-        x: rng.range(0, 320),
-        y: height / 2 - 4,
-        width: rng.range(34, 96),
-        height,
-        depth: 0.86,
-        alpha: 1,
-        region: 'white',
-        // One flat tint so overlapping silhouettes read as a single ridge mass.
-        tint: [0.075, 0.085, 0.125],
-        parallax: 0.35,
-        fieldWidth: 320,
-      });
-    }
-    for (let i = 0; i < 1800; i++) {
-      const size = rng.range(0.05, 0.16);
-      const height = rng.range(0.2, 9);
-      this.background.push({
-        x: rng.range(0, 88),
-        y: height,
-        width: size,
-        height: size,
-        depth: 0.4,
-        alpha: rng.range(0.1, 0.3) * (1 - height / 12),
-        region: 'glow',
-        tint: [1, 0.88, 0.7],
-        parallax: 1,
-        fieldWidth: 88,
-      });
-    }
+    // The ridge-silhouette and ground-haze layers that used to live here are gone. They were
+    // scene padding: fixed-height quads at a world Y unrelated to the local terrain, which read
+    // as distant hills from cruise altitude and as grey rectangles and falling snow from ten
+    // metres up. The terrain and the real particle system carry the scene now, and the sprite
+    // count is honest content rather than a number inflated to look busy.
 
     // No depth buffer yet, so draw order is the sort. Far to near, split at the terrain.
     this.background.sort((a, b) => b.depth - a.depth);
@@ -478,6 +481,18 @@ export class GameApp {
     this.drawEnemies(batch, atlas, view);
     this.drawProjectiles(batch, atlas, view);
     this.drawPlayer(batch, atlas, x, y, pitch);
+
+    // Rotor wash while hovering low — the effect that makes the ground read as ground.
+    const groundY = this.world.terrain.heightAt(x);
+    this.washCooldown -= frameSeconds;
+    if (player.destroyedFor === null && y - groundY < 12 && this.washCooldown <= 0) {
+      this.particles.emitRotorWash(x, groundY, y - groundY);
+      this.washCooldown = WASH_INTERVAL_SECONDS;
+    }
+    this.particles.step(frameSeconds, {
+      groundHeightAt: (worldX) => this.world.terrain.heightAt(worldX),
+    });
+    if (this.particleUv) this.particles.collect(batch, this.particleUv);
 
     const encoder = this.host.gpu.device.createCommandEncoder({ label: 'frame' });
     const clear = this.balance.value.render.clearColor;
