@@ -25,11 +25,31 @@ import {
   type TrackedEntity,
 } from '@/ui/hud.js';
 import { HudView } from '@/ui/hudView.js';
+import { DebriefScreen, PauseScreen } from '@/ui/screens.js';
+import { buildDebrief } from '@/ui/debrief.js';
+import type { SaveStore } from '@/save/store.js';
+import type { Settings } from '@/save/schema.js';
+import {
+  applyCameraSettings,
+  applyInputSettings,
+  cameraShakeScale,
+  devicePixelRatioCeiling,
+  difficultyOf,
+  simSpeed,
+} from './settingsRuntime.js';
 
 export interface GameAppElements {
   canvas: HTMLCanvasElement;
   overlay: HTMLElement;
   hud: HTMLElement;
+  pause: HTMLElement;
+  debrief: HTMLElement;
+}
+
+export interface GameAppOptions {
+  elements: GameAppElements;
+  /** Persisted settings and progress. Defaults are used when storage is unavailable. */
+  save: SaveStore;
 }
 
 export interface SimSnapshot {
@@ -121,8 +141,15 @@ export class GameApp {
   private readonly hud: HudView;
   private readonly frameTimeline = new FrameTimeline(240);
   private readonly background: BackgroundSprite[] = [];
-  private readonly world: MissionWorld;
   private readonly tracked: TrackedEntity[] = [];
+  private readonly save: SaveStore;
+  private readonly mission: ReturnType<typeof loadMission>;
+  private readonly pauseScreen: PauseScreen;
+  private readonly debriefScreen: DebriefScreen;
+
+  private world: MissionWorld;
+  private shakeScale = 1;
+  private debriefRecorded = false;
 
   private batch: SpriteBatch | null = null;
   private atlas: LoadedAtlas | null = null;
@@ -143,28 +170,33 @@ export class GameApp {
   private rotorAngle = 0;
   private renderFacing = 1;
 
-  private constructor(host: RenderHost, elements: GameAppElements, balance: BalanceStore) {
+  private constructor(host: RenderHost, options: GameAppOptions, balance: BalanceStore) {
+    const elements = options.elements;
     this.host = host;
     this.balance = balance;
+    this.save = options.save;
 
     const values = balance.value;
     this.clock = new FixedClock({
       tickHz: values.sim.tickHz,
       maxTicksPerFrame: values.sim.maxTicksPerFrame,
     });
-    this.camera = new Camera({ ...defaultCameraTuning(), ...values.camera });
+    const settings = this.save.current.settings;
+    this.camera = new Camera(
+      applyCameraSettings(settings, { ...defaultCameraTuning(), ...values.camera }),
+    );
     this.actions = new ActionMap();
+    // Balance data supplies the defaults; the player's saved settings override them.
     for (const axis of ['thrustX', 'thrustY', 'aimX', 'aimY'] as const) {
       this.actions.tuning[axis].deadZone = values.input.deadZone;
       this.actions.tuning[axis].curve = values.input.axisCurve;
     }
+    applyInputSettings(settings, this.actions);
+    this.shakeScale = cameraShakeScale(settings);
 
     const mission = loadMission(OPEN_SKY_ID);
-    this.world = new MissionWorld({
-      mission,
-      flight: loadFlightBalance(),
-      dt: this.clock.dt,
-    });
+    this.mission = mission;
+    this.world = this.createWorld();
     this.camera.bounds = {
       minX: 0,
       maxX: mission.lengthMeters,
@@ -182,25 +214,78 @@ export class GameApp {
     this.gamepad = new GamepadSource(this.actions, bindings.gamepad);
     this.overlay = new DebugOverlay(elements.overlay);
     this.hud = new HudView(elements.hud);
+    this.pauseScreen = new PauseScreen(elements.pause, {
+      resume: () => this.togglePause(),
+      restart: () => this.restart(),
+      onSettingChange: (mutate) => this.changeSettings(mutate),
+    });
+    this.debriefScreen = new DebriefScreen(elements.debrief, { retry: () => this.restart() });
 
     this.buildBackground();
   }
 
-  static async start(elements: GameAppElements): Promise<GameApp> {
+  /**
+   * Builds a fresh mission world. Restarting rebuilds rather than resetting: the systems own a
+   * lot of state between them, and a missed field in a reset is a bug that only appears on the
+   * player's second attempt.
+   */
+  private createWorld(): MissionWorld {
+    const world = new MissionWorld({
+      mission: this.mission,
+      flight: loadFlightBalance(),
+      dt: this.clock.dt,
+      difficulty: difficultyOf(this.save.current.settings),
+    });
+    // Taking a hit shakes the frame. Scaled — or zeroed — by the accessibility setting, which
+    // is why the scale is applied here rather than baked into the camera.
+    world.events.on('mission:playerHit', () => this.camera.addShake(0.25 * this.shakeScale));
+    world.events.on('mission:enemyDestroyed', () => this.camera.addShake(0.08 * this.shakeScale));
+    return world;
+  }
+
+  private changeSettings(mutate: (settings: Settings) => void): void {
+    this.save.updateSettings(mutate);
+    const settings = this.save.current.settings;
+    applyInputSettings(settings, this.actions);
+    this.camera.tuning = applyCameraSettings(settings, this.camera.tuning);
+    this.shakeScale = cameraShakeScale(settings);
+    if (this.pauseScreen.isVisible) this.pauseScreen.show(settings);
+  }
+
+  /** Throws the current attempt away and flies the mission again from the pad. */
+  restart(): void {
+    this.world = this.createWorld();
+    this.clock.reset();
+    this.droppedTicks = 0;
+    this.debriefRecorded = false;
+    this.paused = false;
+    this.pauseScreen.hide();
+    this.debriefScreen.hide();
+    this.syncInterpolation(true);
+    this.camera.snapTo({
+      x: this.world.player.position.x,
+      y: this.world.player.position.y,
+      velocityX: 0,
+      velocityY: 0,
+    });
+    this.lastFrameMs = performance.now();
+  }
+
+  static async start(options: GameAppOptions): Promise<GameApp> {
     const balance = new BalanceStore();
-    const values = balance.value;
+    const elements = options.elements;
 
     let app: GameApp | null = null;
     const host = await RenderHost.start({
       canvas: elements.canvas,
-      maxDevicePixelRatio: values.render.maxDevicePixelRatio,
+      maxDevicePixelRatio: devicePixelRatioCeiling(options.save.current.settings),
       onRecovery: (event) => app?.onRecovery(event),
       onUncapturedError: (error) => {
         console.error('[webgpu] uncaptured error', error);
       },
     });
 
-    app = new GameApp(host, elements, balance);
+    app = new GameApp(host, options, balance);
     await app.buildGpuResources();
     app.attach();
     return app;
@@ -312,7 +397,10 @@ export class GameApp {
     this.gamepad.poll();
 
     const simStart = performance.now();
-    const step = this.clock.advance(Math.min(frameMs, 250) / 1000);
+    // Reduced game speed slows how much real time reaches the clock. Scaling dt instead would
+    // change the physics, which is the one thing an accessibility option must never do.
+    const speed = simSpeed(this.save.current.settings);
+    const step = this.clock.advance((Math.min(frameMs, 250) / 1000) * speed);
     this.droppedTicks += step.droppedTicks;
     for (let i = 0; i < step.ticks; i++) {
       this.previous = { ...this.current };
@@ -325,6 +413,7 @@ export class GameApp {
 
     this.render(step.alpha);
     this.paintUi(nowMs);
+    this.maybeDebrief();
   };
 
   /** Named actions to mission input. The simulation never learns that a keyboard exists. */
@@ -358,6 +447,7 @@ export class GameApp {
 
     const frameSeconds = clamp(this.frameTimeline.mean() / 1000, 1 / 480, 1 / 20);
     this.rotorAngle = (this.rotorAngle + 46 * frameSeconds) % (Math.PI * 2);
+    this.camera.decayShake(frameSeconds);
     const facingTarget = player.yawTarget ?? player.facing;
     this.renderFacing += (facingTarget - this.renderFacing) * clamp(frameSeconds * 9, 0, 1);
 
@@ -792,8 +882,44 @@ export class GameApp {
   }
 
   togglePause(): void {
+    // The debrief is its own modal; Esc must not drop a pause menu on top of it.
+    if (this.debriefScreen.isVisible) return;
     this.paused = !this.paused;
-    if (!this.paused) this.lastFrameMs = performance.now();
+    if (this.paused) this.pauseScreen.show(this.save.current.settings);
+    else {
+      this.pauseScreen.hide();
+      this.lastFrameMs = performance.now();
+    }
+  }
+
+  /** Shows the debrief once, the first frame after the mission resolves. */
+  private maybeDebrief(): void {
+    if (this.debriefRecorded || this.world.phase === 'active') return;
+    this.debriefRecorded = true;
+
+    const outcome = this.world.outcome();
+    const grade = gradeMission(outcome);
+    this.debriefScreen.show(
+      buildDebrief({
+        missionName: this.mission.name,
+        outcome,
+        grade,
+        civilians: this.world.civilians,
+      }),
+    );
+
+    this.save.recordMission({
+      missionId: this.mission.id,
+      rank: grade.rank,
+      score: grade.score,
+      rescued: outcome.civilians.rescued,
+      dead: outcome.civilians.dead,
+      elapsedSeconds: outcome.elapsedSeconds,
+      difficulty: difficultyOf(this.save.current.settings),
+      completedAt: Date.now(),
+    });
+    for (let i = 0; i < this.world.stats.safeLandings; i++) this.save.recordSafeLanding();
+    void this.save.flush();
   }
 
   /** The finished mission's grade, or null while it is still being flown. */
@@ -824,6 +950,18 @@ export class GameApp {
     };
   }
 
+  /**
+   * Debug command surface, per the PRD's requirement to force every mission phase and spawn
+   * every actor. Exposed through the app's test hooks, never through gameplay input.
+   */
+  readonly debug = {
+    forcePhase: (phase: 'active' | 'complete' | 'failed'): void =>
+      this.world.debugForcePhase(phase),
+    spawnAll: (): number => this.world.debugSpawnAll(),
+    releaseAllCivilians: (): void => this.world.debugReleaseAllCivilians(),
+    teleport: (x: number, y?: number): void => this.world.debugTeleport(x, y),
+  };
+
   simulateDeviceLoss(): void {
     this.host.simulateDeviceLoss();
   }
@@ -838,6 +976,8 @@ export class GameApp {
     this.keyboard.detach();
     this.overlay.dispose();
     this.hud.dispose();
+    this.pauseScreen.dispose();
+    this.debriefScreen.dispose();
     this.batch?.destroy();
     this.host.dispose();
   }

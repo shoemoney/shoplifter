@@ -100,3 +100,91 @@ test.describe('Operation Open Sky in the browser', () => {
     await expect(page.getByTestId('hud-status')).toContainText('%');
   });
 });
+
+test.describe('pause, restart and debrief', () => {
+  test('Esc opens the pause screen with accessibility toggles', async ({ page }) => {
+    await boot(page);
+    await page.keyboard.press('Escape');
+
+    const pause = page.getByTestId('pause-screen');
+    await expect(pause).toBeVisible();
+    await expect(pause.getByTestId('resume')).toBeVisible();
+    await expect(pause.getByTestId('toggle-reduced-motion')).toBeVisible();
+
+    await pause.getByTestId('resume').click();
+    await expect(pause).toBeHidden();
+  });
+
+  test('an accessibility toggle sticks and reports its state', async ({ page }) => {
+    await boot(page);
+    await page.keyboard.press('Escape');
+    const toggle = page.getByTestId('toggle-reduced-motion');
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    await toggle.click();
+    await expect(page.getByTestId('toggle-reduced-motion')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('restart puts the aircraft back on the pad with everyone still to rescue', async ({
+    page,
+  }) => {
+    await boot(page);
+    await page.evaluate(() => window.shoplifter?.debug?.releaseAllCivilians());
+    // Get airborne first — skid friction means the aircraft barely slides on the pad.
+    await page.keyboard.down('KeyW');
+    await page.keyboard.down('KeyD');
+    await page.waitForFunction(() => (window.shoplifter?.stats()?.sim.x ?? 0) > 260, undefined, {
+      timeout: 20_000,
+    });
+    await page.keyboard.up('KeyD');
+    await page.keyboard.up('KeyW');
+
+    await page.evaluate(() => window.shoplifter?.restart());
+    await page.waitForFunction(() => (window.shoplifter?.stats()?.sim.x ?? 9999) < 260, undefined, {
+      timeout: 10_000,
+    });
+
+    const state = await sim(page);
+    expect(state.rescued).toBe(0);
+    expect(state.phase).toBe('active');
+    expect(state.hull).toBe(1);
+  });
+
+  test('the debrief names every civilian and never celebrates kills', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => window.shoplifter?.debug?.forcePhase('complete'));
+
+    const debrief = page.getByTestId('debrief-screen');
+    await expect(debrief).toBeVisible();
+    await expect(debrief.getByTestId('debrief-rank')).toBeVisible();
+    // Every one of the 24 authored civilians is accounted for by name.
+    await expect(debrief.getByTestId('debrief-roster').locator('li')).toHaveCount(24);
+    await expect(debrief.getByTestId('debrief-counts')).toContainText('left behind');
+    // Threats appear only as a neutral statistic, never as a score.
+    await expect(debrief).toContainText('threats neutralised');
+    await expect(debrief).not.toContainText('Kills');
+  });
+
+  test('a failed mission says why it failed', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => window.shoplifter?.debug?.forcePhase('failed'));
+    const debrief = page.getByTestId('debrief-screen');
+    await expect(debrief).toBeVisible();
+    await expect(debrief.getByTestId('debrief-failed')).toContainText('aircraft lost');
+    await expect(debrief.getByTestId('debrief-rank')).toContainText('F');
+  });
+
+  test('flying it again from the debrief resets the mission', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => window.shoplifter?.debug?.forcePhase('failed'));
+    await page.getByTestId('debrief-retry').click();
+    await expect(page.getByTestId('debrief-screen')).toBeHidden();
+    expect((await sim(page)).phase).toBe('active');
+  });
+
+  test('the debug command spawns every authored enemy kind', async ({ page }) => {
+    await boot(page);
+    const spawned = await page.evaluate(() => window.shoplifter?.debug?.spawnAll() ?? 0);
+    expect(spawned).toBeGreaterThanOrEqual(5);
+    expect((await sim(page)).enemies).toBeGreaterThanOrEqual(5);
+  });
+});

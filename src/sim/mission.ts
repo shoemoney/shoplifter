@@ -1001,6 +1001,64 @@ export class MissionWorld {
     };
   }
 
+  // --- Debug commands -----------------------------------------------------
+  // The PRD requires a way to spawn every actor and force every mission phase. Without it,
+  // testing a late-mission state means playing fifteen minutes to reach it, so it never gets
+  // tested. These mutate the world directly and are not reachable from gameplay input.
+
+  debugForcePhase(phase: MissionPhase): void {
+    if (phase === 'failed') {
+      this.player.hull = 0;
+      this.player.destroyedFor = 0;
+      this.fail('debug');
+      return;
+    }
+    if (phase === 'complete') {
+      this.progress.rescued = this.mission.requiredRescues;
+      this.progress.unloaded = Math.max(this.progress.unloaded, 1);
+      const zones = new Set(this.progress.zonesReached);
+      for (const zone of this.mission.landingZones) zones.add(zone.id);
+      this.progress.zonesReached = zones;
+      this.objectives.update(this.progress);
+      this.phase = 'complete';
+      this.emit('mission:complete', { rescued: this.progress.rescued, debug: true });
+      return;
+    }
+    this.phase = 'active';
+  }
+
+  /** Spawns one of every enemy kind the mission authors, at their own sockets. */
+  debugSpawnAll(): number {
+    const seen = new Set<string>();
+    let spawned = 0;
+    for (const socket of this.sockets) {
+      if (seen.has(socket.kind)) continue;
+      seen.add(socket.kind);
+      this.spawnEnemy(socket);
+      spawned++;
+    }
+    return spawned;
+  }
+
+  debugSpawnKind(kind: EnemyKind): boolean {
+    const socket = this.sockets.find((candidate) => candidate.kind === kind);
+    if (!socket) return false;
+    this.spawnEnemy(socket);
+    return true;
+  }
+
+  debugReleaseAllCivilians(): void {
+    for (const group of this.mission.civilianGroups) this.releaseGroup(group.id);
+  }
+
+  debugTeleport(x: number, y?: number): void {
+    this.player.position.x = x;
+    this.player.position.y = y ?? this.terrain.heightAt(x) + 40;
+    this.player.velocity.x = 0;
+    this.player.velocity.y = 0;
+    this.player.grounded = false;
+  }
+
   /** Replay verification hash over everything the simulation owns. */
   hash(): string {
     const h = new Hash32();
