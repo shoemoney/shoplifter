@@ -282,3 +282,33 @@ call, against a budget of 150.
 The backdrop is anchored to the terrain height under the camera rather than to a fixed world
 Y — the ridge line lives at the bottom of the image, and a fixed anchor buries it wherever the
 ground rises, which is most of this map.
+
+## ART-7 — The "flaky" device-loss test was reporting a real race
+
+It failed about one run in three, which is the profile of a test people delete or retry away.
+It was correct. `RenderHost` flips `phase` back to `'ready'` as soon as a replacement device
+arrives, but `GameApp`'s resource rebuild is async — so frames in that window submitted work
+against handles belonging to the destroyed device and raised `GPUValidationError`. The test
+asserts no uncaptured GPU errors, so it caught it, intermittently, exactly as often as the
+window happened to be open when a frame landed.
+
+Fixed by nulling every GPU handle the instant loss is reported; `render()` already declines to
+draw without a batch and atlas, so the window closes and reopens on its own.
+
+Verified causally rather than by observation: with the fix disabled the drill fails 6 of 8 runs,
+with it restored 8 of 8. "The flake stopped after I changed something" is not a diagnosis.
+
+## ART-8 — Both halves of the premultiplied-alpha contract are pinned, by different mechanisms
+
+The asset side is an absolute invariant in `tools/make_atlas.py --check`: the committed PNG must
+contain a semi-transparent pixel whose colour exceeds its alpha, which a premultiplied file
+cannot. The loader side is a unit test asserting `loadAtlas` both requests premultiplication on
+decode and declares it on upload, and that the two agree.
+
+They are separate on purpose. The pixel-equality check compares the file against the generator,
+so it goes blind the moment the GENERATOR is what premultiplies — both sides agree and the bug
+is invisible. Demonstrated: with the packer premultiplying, pixel equality passed silently and
+only the absolute invariant fired.
+
+The invariant also fails when the atlas contains no semi-transparent pixels at all, because then
+it proves nothing — which is precisely how the original bug hid for the whole of Milestone 0.
