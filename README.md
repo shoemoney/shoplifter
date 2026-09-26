@@ -47,14 +47,14 @@ flowchart LR
 <details>
 <summary><b>Milestones 0 → 5 (click to expand)</b></summary>
 
-| #   | Milestone         | Deliverable                                                            |
-| --- | ----------------- | ---------------------------------------------------------------------- |
-| 0   | 🧰 Foundation     | Bootable WebGPU app, CI, fixed clock, seeded RNG, debug overlay        |
-| 1   | 🕹️ Flight Sandbox | Helicopter with momentum, pitch, landing contacts, hot-reloaded tuning |
-| 2   | 💥 Combat Sandbox | Door gun, rockets, flares, damage, 5 enemies + drone                   |
-| 3   | 🚑 Rescue Loop    | Civilian state machine, boarding, capacity, injuries, unload, scoring  |
-| 4   | 🏜️ Vertical Slice | _Operation Open Sky_ — 6 km Salt Flats map, launch to debrief          |
-| 5   | ✨ Polish         | Art/audio, accessibility, save, replay, perf budgets                   |
+| #   | Milestone         | Status | Deliverable                                                           |
+| --- | ----------------- | ------ | --------------------------------------------------------------------- |
+| 0   | 🧰 Foundation     | ✅     | Bootable WebGPU app, CI, fixed clock, seeded RNG, debug overlay       |
+| 1   | 🕹️ Flight Sandbox | ✅     | Momentum, pitch, landing tolerances, heightfield terrain              |
+| 2   | 💥 Combat Sandbox | ✅     | Door gun, rockets, flares, component damage, six enemy types          |
+| 3   | 🚑 Rescue Loop    | ✅     | Civilian state machine, boarding, capacity, injuries, unload, scoring |
+| 4   | 🏜️ Vertical Slice | ✅     | _Operation Open Sky_ — 6 km, 24 civilians, completes end to end       |
+| 5   | ✨ Polish         | 🚧     | Replay + soak done; art, audio graph and settings UI remain           |
 
 </details>
 
