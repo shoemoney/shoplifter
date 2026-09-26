@@ -89,22 +89,31 @@ test.describe('boot and render', () => {
   test('survives a resize and a device pixel ratio change', async ({ page }) => {
     await page.goto('/');
     await waitForRunning(page);
+
+    // Wait for the backbuffer to match a SPECIFIC css width rather than merely "something
+    // different from last time". The loose version races: a still-pending first resize
+    // satisfies "different", so the second reading can be the first resize's value and come
+    // out smaller than the one it is compared against. It passes alone and fails under load.
+    const waitForCssWidth = (cssWidth: number): Promise<unknown> =>
+      page.waitForFunction(
+        (width) => {
+          const stats = window.shoplifter?.stats();
+          if (!stats) return false;
+          const dpr = Math.min(2, window.devicePixelRatio || 1);
+          return stats.resolution.width === Math.round(width * dpr);
+        },
+        cssWidth,
+        { timeout: 30_000 },
+      );
+
     await page.setViewportSize({ width: 1024, height: 640 });
-    await page.waitForFunction(
-      () => (window.shoplifter?.stats()?.resolution.width ?? 0) > 0,
-      undefined,
-      { timeout: 10_000 },
-    );
+    await waitForCssWidth(1024);
     const small = await readStats(page);
 
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.waitForFunction(
-      (width) => (window.shoplifter?.stats()?.resolution.width ?? 0) !== width,
-      small.resolution.width,
-      { timeout: 10_000 },
-    );
-
+    await waitForCssWidth(1440);
     const large = await readStats(page);
+
     expect(large.resolution.width).toBeGreaterThan(small.resolution.width);
     expect(large.recoveryPhase).toBe('ready');
   });
