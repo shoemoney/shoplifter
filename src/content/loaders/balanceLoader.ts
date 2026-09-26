@@ -1,5 +1,7 @@
 import coreBalance from '../balance/core.json' with { type: 'json' };
+import flightBalance from '../balance/flight.json' with { type: 'json' };
 import { parseBalance, type Balance, type BalanceIssue } from '../schemas/balance.js';
+import { flightBalanceSchema, type FlightBalance } from '../schemas/flight.js';
 
 export class BalanceValidationError extends Error {
   constructor(readonly issues: BalanceIssue[]) {
@@ -47,3 +49,17 @@ export class BalanceStore {
     return [];
   }
 }
+
+/** Validates the bundled flight tuning. Same contract as the core balance: fail loudly. */
+export const loadFlightBalance = (): FlightBalance => {
+  const result = flightBalanceSchema.safeParse(flightBalance);
+  if (!result.success) {
+    throw new BalanceValidationError(
+      result.error.issues.map((issue) => ({
+        path: issue.path.length > 0 ? issue.path.join('.') : '(root)',
+        message: issue.message,
+      })),
+    );
+  }
+  return result.data;
+};

@@ -44,7 +44,11 @@ fn vertexMain(input: VertexInput) -> VertexOutput {
 
   var out: VertexOutput;
   out.clipPosition = vec4f(clipXY, depth, 1.0);
-  out.uv = mix(input.uvRect.xy, input.uvRect.zw, input.corner + vec2f(0.5, 0.5));
+  // Texture v runs DOWN the atlas while clip-space y runs UP, so the corner has to be flipped
+  // vertically before it indexes the uv rect. Without this every sprite renders upside down —
+  // invisible on symmetric placeholder art, obvious the moment a sprite has a top and a bottom.
+  let uvCoord = vec2f(input.corner.x + 0.5, 0.5 - input.corner.y);
+  out.uv = mix(input.uvRect.xy, input.uvRect.zw, uvCoord);
   out.color = input.color;
   return out;
 }

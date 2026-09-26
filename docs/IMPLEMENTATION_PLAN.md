@@ -25,7 +25,7 @@ Bootable WebGPU app with CI.
 **Acceptance:** instanced textured sprites render at a stable 60 FPS in one draw call; an
 unsupported browser gets a specific explanation; `npm run verify` and the Playwright suite pass.
 
-## Milestone 1 — Flight Sandbox (unstarted)
+## Milestone 1 — Flight Sandbox — **done**
 
 | #   | Issue                                                                     | Notes                                                 |
 | --- | ------------------------------------------------------------------------- | ----------------------------------------------------- |

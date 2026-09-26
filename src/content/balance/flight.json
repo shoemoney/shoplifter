@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "flight": {
+    "maxHorizontalSpeed": 42,
+    "boostSpeedMultiplier": 1.38,
+    "maxClimbSpeed": 18,
+    "maxDescentSpeed": 24,
+    "horizontalAcceleration": 22,
+    "verticalAcceleration": 26,
+    "gravity": 14,
+    "dragX": 0.32,
+    "dragY": 0.48,
+    "excessSpeedDrag": 14,
+    "minEngineEfficiency": 0.35,
+    "passengerClimbPenalty": 0.018,
+    "groundEffectLift": 0.07,
+    "groundEffectHeight": 8,
+    "rotorNoise": 0.22,
+    "pitchPerAcceleration": 0.012,
+    "maxPitch": 0.34,
+    "pitchStiffness": 46,
+    "pitchDamping": 9,
+    "yawDurationSeconds": 0.22,
+    "fuelBurnPerSecond": 0.16,
+    "boostFuelMultiplier": 2.5
+  },
+  "landing": {
+    "skidHalfWidth": 1.6,
+    "skidDrop": 1.1,
+    "safeVerticalSpeed": 3.2,
+    "crashVerticalSpeed": 6,
+    "safeHorizontalSpeed": 2.5,
+    "safeSlopeDegrees": 7,
+    "safePitchDegrees": 9,
+    "crashHullDamage": 0.55,
+    "hardHullDamage": 0.12,
+    "skidFriction": 9
+  },
+  "capacity": 8,
+  "fuelCapacity": 100
+}

@@ -102,3 +102,54 @@ test measures SwiftShader, not our recovery path. The e2e test reads the adapter
 skips with a stated reason when it matches a software backend; everywhere a real adapter exists
 it stays strict. Verified on Apple Metal 3: recovery rebuilds every GPU resource and rendering
 resumes. The rest of the WebGPU suite still runs in CI under software rendering.
+
+## M1-1 — Drag is linear damping, not the quadratic form in the PRD's equation block
+
+The PRD's tuning table lists `dragX/dragY = 0.32/0.48` and annotates them "Exponential damping",
+but its equation block writes `drag * velocity * abs(velocity)`. Those disagree: quadratic drag at
+0.32 puts terminal horizontal speed at `sqrt(22/0.32)` = **8.3 m/s**, a fifth of the 42 m/s the
+same table specifies. Implemented as linear damping (`drag * velocity`, the derivative form of
+exponential damping), which is consistent with the annotation and reaches the stated speeds.
+
+## M1-2 — Speed caps come from an excess-speed penalty, not a clamp
+
+With linear damping alone, terminal speed is `acceleration / drag` = 68.75 m/s. An additional
+`excessSpeedDrag` of 14 per m/s past the cap settles the aircraft at ~42.6 m/s unboosted and
+~58.2 m/s boosted, matching both PRD figures, while still letting a dive or a boost genuinely
+exceed the number and bleed back. A hard clamp would read as hitting a wall.
+
+The same coefficient governs both axes: climb settles at ~18.2 m/s and free-fall terminal at
+~24.2 m/s against PRD targets of 18 and 24.
+
+## M1-3 — Hover at 55% input is an emergent property, not a tuned constant
+
+`gravity / verticalAcceleration` = 14 / 26 = 0.538. The PRD's "approximately 55% vertical input
+to hover" falls out of the two numbers it already specifies. Changing either one moves the hover
+point, so they are not independent knobs.
+
+## M1-4 — Rotor damage uses summed sine waves, not an RNG draw
+
+Damaged-rotor control noise must be reproducible for replay verification. Two incommensurate
+sines of simulated time give wandering that never repeats on a short cycle and is identical
+across runs. An RNG draw would be deterministic too, but it would couple flight to the draw
+order of every other system that touches the RNG.
+
+## M1-5 — The landing system runs after the flight integration, never before
+
+Resolving ground contact before integrating position lets a fast descent tunnel through the
+terrain between ticks. Flight moves the aircraft, then landing pushes it back out — at 120 Hz
+and a 24 m/s terminal descent that is a 20 cm correction at worst.
+
+## M1-6 — Sprites were rendering upside down (fixed)
+
+Texture `v` runs down the atlas while clip-space `y` runs up, so the unit-quad corner has to be
+flipped vertically before indexing the uv rect. This was invisible through Milestone 0 because
+every placeholder sprite was vertically symmetric; it showed up the instant the terrain had a
+gradient and the helicopter had a canopy. Fixed in `sprite.wgsl`.
+
+## M1-7 — There is no depth buffer, so draw order is the sort
+
+Layer `depth` is written to clip-space Z but nothing tests against it yet. The background is
+therefore sorted far-to-near once at build time and split at the terrain's depth, so opaque ridge
+silhouettes cannot paint over the ground the player is trying to land on. A depth attachment can
+be added later without changing the instance layout.

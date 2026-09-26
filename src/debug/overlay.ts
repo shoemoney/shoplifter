@@ -58,6 +58,8 @@ export interface OverlayMetrics {
   gamepad: string;
   placeholderAssets: boolean;
   thrust: { x: number; y: number };
+  /** Flight telemetry, shown as the Milestone 1 debug graphs in text form. */
+  flight?: Record<string, string>;
 }
 
 export class DebugOverlay {
@@ -112,6 +114,7 @@ export class DebugOverlay {
       ['gamepad', metrics.gamepad],
       ['thrust', `${metrics.thrust.x.toFixed(2)}, ${metrics.thrust.y.toFixed(2)}`],
     ];
+    for (const [key, value] of Object.entries(metrics.flight ?? {})) rows.push([key, value]);
     if (metrics.placeholderAssets) rows.push(['assets', 'PLACEHOLDER — atlas failed to load']);
 
     this.element.textContent = rows.map(([key, value]) => `${key.padEnd(17)}${value}`).join('\n');
