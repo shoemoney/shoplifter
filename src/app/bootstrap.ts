@@ -27,6 +27,7 @@ const requireElement = <T extends HTMLElement>(id: string): T => {
 const boot = async (): Promise<void> => {
   const canvas = requireElement<HTMLCanvasElement>('stage');
   const overlay = requireElement('overlay');
+  const hud = requireElement('hud');
   const fallback = requireElement('fallback');
 
   let app: GameApp | null = null;
@@ -45,14 +46,16 @@ const boot = async (): Promise<void> => {
     hooks.reason = probe.reason;
     showUnsupportedScreen(fallback, probe.reason ?? 'no-navigator-gpu', probe.detail);
     canvas.hidden = true;
+    hud.hidden = true;
     return;
   }
 
   try {
-    app = await GameApp.start({ canvas, overlay });
+    app = await GameApp.start({ canvas, overlay, hud });
     hooks.status = 'running';
   } catch (error) {
     canvas.hidden = true;
+    hud.hidden = true;
     if (error instanceof WebGpuUnsupportedError) {
       hooks.status = 'unsupported';
       hooks.reason = error.reason;

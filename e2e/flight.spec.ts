@@ -104,10 +104,11 @@ test.describe('flight sandbox', () => {
 
   test('the debug overlay reports live flight telemetry', async ({ page }) => {
     await boot(page);
+    await page.evaluate(() => window.shoplifter?.toggleOverlay(true));
     const overlay = page.getByTestId('debug-overlay');
     await expect(overlay).toContainText('altitude');
     await expect(overlay).toContainText('attitude');
     await expect(overlay).toContainText('contact');
-    await expect(overlay).toContainText('hull');
+    await expect(overlay).toContainText('mission');
   });
 });

@@ -61,6 +61,8 @@ test.describe('boot and render', () => {
   test('debug overlay reports adapter and frame metrics', async ({ page }) => {
     await page.goto('/');
     await waitForRunning(page);
+    // The overlay is a developer tool and ships hidden; backquote toggles it in a real session.
+    await page.evaluate(() => window.shoplifter?.toggleOverlay(true));
     const overlay = page.getByTestId('debug-overlay');
     await expect(overlay).toBeVisible();
     await expect(overlay).toContainText('fps');
@@ -79,11 +81,9 @@ test.describe('boot and render', () => {
     });
     await page.keyboard.up('KeyD');
 
-    const thrust = await page.evaluate(() => {
-      const element = document.querySelector('[data-testid="debug-overlay"]');
-      return element?.textContent ?? '';
-    });
-    expect(thrust).toContain('thrust');
+    // Read the thrust straight off the simulation rather than the optional debug overlay.
+    const moved = await page.evaluate(() => window.shoplifter?.stats()?.sim.x ?? 0);
+    expect(moved).toBeGreaterThan(0);
   });
 
   test('survives a resize and a device pixel ratio change', async ({ page }) => {
