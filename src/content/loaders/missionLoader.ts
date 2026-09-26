@@ -101,7 +101,40 @@ export const compileTerrain = (
     samples[i] = segment ? segmentHeightAt(segment, x) : 0;
   }
 
+  flattenLandingZones(mission, samples, spacing);
   return new Heightfield({ samples, originX: 0, spacing });
+};
+
+/**
+ * Levels the ground under every authored landing zone, with a short blend either side.
+ *
+ * An authored landing zone is a prepared surface by definition. Without this, a zone placed on
+ * hilly terrain can exceed the 7-degree slope tolerance, which does not merely make landing
+ * hard — it makes the zone unusable, because civilians only approach a *stable* aircraft. The
+ * mission then looks correct in the data and cannot be completed.
+ */
+const flattenLandingZones = (mission: Mission, samples: Float32Array, spacing: number): void => {
+  const blend = 12;
+  for (const zone of mission.landingZones) {
+    const half = zone.width / 2;
+    const centreIndex = Math.round(zone.x / spacing);
+    const padHeight = samples[Math.min(samples.length - 1, Math.max(0, centreIndex))] ?? 0;
+
+    const from = Math.max(0, Math.floor((zone.x - half - blend) / spacing));
+    const to = Math.min(samples.length - 1, Math.ceil((zone.x + half + blend) / spacing));
+    for (let i = from; i <= to; i++) {
+      const x = i * spacing;
+      const distance = Math.abs(x - zone.x);
+      if (distance <= half) {
+        samples[i] = padHeight;
+        continue;
+      }
+      // Ease back into the authored terrain so the pad does not end in a cliff.
+      const t = Math.min(1, (distance - half) / blend);
+      const original = samples[i] ?? padHeight;
+      samples[i] = padHeight + (original - padHeight) * t * t;
+    }
+  }
 };
 
 /** Total civilians the mission places. The debrief denominator. */

@@ -87,7 +87,10 @@ export const defaultDamageTuning = (): DamageTuning => ({
   minLiftMultiplier: 0.35,
   forcedDescentThreshold: 0.2,
 
-  fuelLeakPerHit: 1.5,
+  // Litres/second added per fuel-system hit. At 1.5 a single hit emptied a full tank in ~65 s,
+  // which is not a leak the player can respond to — it is a delayed kill. At 0.35 one hit is
+  // roughly double the cruise burn: a real emergency with time to divert to a pad.
+  fuelLeakPerHit: 0.35,
   fireRiskHitCount: 3,
 
   weaponHeatPerHit: 0.3,

@@ -9,6 +9,12 @@ import { z } from 'zod';
  * the validator come from one declaration and cannot drift apart.
  */
 
+/**
+ * Mirrors `CivilianTuning.approachRadius`. Duplicated rather than imported so content
+ * validation does not depend on the simulation; the civilian tests pin the runtime value.
+ */
+export const CIVILIAN_APPROACH_RADIUS = 24;
+
 const id = z
   .string()
   .min(1)
@@ -222,6 +228,23 @@ export const missionSchema = z
         path: ['terrainSegments'],
         message: `terrain ends at ${last.endX} m, short of the ${mission.lengthMeters} m map`,
       });
+    }
+
+    // A civilian group with no landing zone in reach is unrescuable, and nothing else in the
+    // data looks wrong — the mission simply cannot be completed. Civilians only approach a
+    // settled aircraft inside their approach radius, so the zone has to be close enough that
+    // the group's far edge is still within it.
+    for (const group of mission.civilianGroups) {
+      const reachable = mission.landingZones.some(
+        (zone) => Math.abs(zone.x - group.x) + group.spread / 2 <= CIVILIAN_APPROACH_RADIUS,
+      );
+      if (!reachable) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['civilianGroups', group.id],
+          message: `no landing zone within ${CIVILIAN_APPROACH_RADIUS} m of this group — its civilians could never board`,
+        });
+      }
     }
 
     if (!mission.directorPhases.some((phase) => phase.trigger.type === 'missionStart')) {
