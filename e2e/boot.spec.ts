@@ -115,6 +115,12 @@ test.describe('boot and render', () => {
     await waitForRunning(page);
     const before = await readStats(page);
 
+    // Destroying the device crashes Chromium's software WebGPU backend outright, so on a
+    // GPU-less CI runner this drill tests the backend, not our recovery path. Skip it there
+    // and keep it strict everywhere a real adapter exists.
+    const software = /swiftshader|llvmpipe|software|lavapipe/i.test(before.adapter);
+    test.skip(software, `software WebGPU adapter (${before.adapter}) cannot survive device loss`);
+
     await page.evaluate(() => window.shoplifter?.simulateDeviceLoss());
 
     await page.waitForFunction(

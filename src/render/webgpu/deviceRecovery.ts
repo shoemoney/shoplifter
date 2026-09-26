@@ -110,10 +110,19 @@ export class RenderHost {
   }
 
   private handleLoss(reason: string, message: string): void {
-    this.phase = 'lost';
-    for (const registration of this.registrations) registration.built = false;
+    this.markLost();
     this.emit({ phase: 'lost', attempt: this.attempt, reason, message });
     void this.recover();
+  }
+
+  /**
+   * Idempotent, and deliberately synchronous. `device.lost` resolves a microtask or more after
+   * the device actually dies, and a frame submitted in that window draws into a corpse — a
+   * validation error on a real driver, a GPU-process crash on a software backend.
+   */
+  private markLost(): void {
+    this.phase = 'lost';
+    for (const registration of this.registrations) registration.built = false;
   }
 
   private async recover(): Promise<void> {
@@ -155,6 +164,7 @@ export class RenderHost {
   /** Test hook: drops the device on purpose and drives the full rebuild path. */
   simulateDeviceLoss(): void {
     this.expectRecovery = true;
+    this.markLost();
     this.context.device.destroy();
   }
 

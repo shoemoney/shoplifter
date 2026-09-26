@@ -86,3 +86,19 @@ keeps the real WebGPU path under test in CI instead of skipping it. Timing-based
 therefore budget-free: the e2e suite asserts draw counts, sprite counts, tick progress and
 recovery, never frame rate. Frame-rate budgets are measured on real hardware per the PRD's
 performance test plan.
+
+## M0-14 — Device loss is marked synchronously, before `device.lost` resolves
+
+`device.lost` settles a microtask or more after the device actually dies. A frame submitted in
+that window draws into a dead device: a validation error on a real driver, and a GPU-process
+crash on Chromium's software backend, which is how CI found it. `RenderHost.markLost()` flips
+the phase and un-builds every resource synchronously, so the render loop's `phase !== 'ready'`
+guard is actually closed rather than nearly closed.
+
+## M0-15 — The device-loss drill skips on software WebGPU adapters
+
+Destroying the device kills Chromium's software backend outright, so on a GPU-less runner the
+test measures SwiftShader, not our recovery path. The e2e test reads the adapter string and
+skips with a stated reason when it matches a software backend; everywhere a real adapter exists
+it stays strict. Verified on Apple Metal 3: recovery rebuilds every GPU resource and rendering
+resumes. The rest of the WebGPU suite still runs in CI under software rendering.
