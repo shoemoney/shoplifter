@@ -27,10 +27,11 @@ jobs:
       - run: npm run test
       - run: npm run build
       - name: Sprite atlas matches its generator
+        # Compares pixels and manifest, not file bytes: PNG encoding is not stable across
+        # Pillow/zlib versions, so a byte check tests the encoder rather than the art.
         run: |
           python3 -m pip install --quiet --disable-pip-version-check Pillow
-          python3 tools/make_atlas.py
-          git diff --exit-code -- public/assets/atlas.png src/content/atlases/core.json
+          python3 tools/make_atlas.py --check
 
   e2e:
     name: playwright (webgpu)

@@ -84,20 +84,70 @@ def build():
     return packer
 
 
+def manifest_text(packer):
+    return (
+        json.dumps(
+            {
+                "image": "/assets/atlas.png",
+                "width": ATLAS,
+                "height": ATLAS,
+                "regions": dict(sorted(packer.regions.items())),
+            },
+            indent=2,
+        )
+        + "\n"
+    )
+
+
+def check(packer):
+    """Verifies the committed art still matches what this generator produces.
+
+    Compares PIXELS, not file bytes. PNG encoding is not stable across Pillow and zlib
+    versions, so a byte comparison fails on a CI runner with a different Pillow even though
+    every pixel is identical — it checks the encoder, not the art.
+    """
+    from PIL import Image
+
+    problems = []
+
+    if not OUT_PNG.exists():
+        problems.append(f"{OUT_PNG.relative_to(ROOT)} is missing")
+    else:
+        committed = Image.open(OUT_PNG).convert("RGBA")
+        fresh = packer.image
+        if committed.size != fresh.size:
+            problems.append(f"atlas is {committed.size}, generator produces {fresh.size}")
+        elif committed.tobytes() != fresh.tobytes():
+            a, b = committed.tobytes(), fresh.tobytes()
+            diff = sum(1 for i in range(0, len(a), 4) if a[i : i + 4] != b[i : i + 4])
+            problems.append(f"atlas pixels differ from the generator ({diff} pixels)")
+
+    expected = manifest_text(packer)
+    if not OUT_MANIFEST.exists():
+        problems.append(f"{OUT_MANIFEST.relative_to(ROOT)} is missing")
+    elif OUT_MANIFEST.read_text() != expected:
+        problems.append("atlas manifest differs from the generator")
+
+    if problems:
+        for problem in problems:
+            print(f"atlas check FAILED: {problem}", file=sys.stderr)
+        print("run `npm run assets:atlas` and commit the result", file=sys.stderr)
+        return 1
+
+    print(f"atlas check ok: {len(packer.regions)} regions match the generator")
+    return 0
+
+
 def main():
     packer = build()
+    if "--check" in sys.argv:
+        return check(packer)
+
     OUT_PNG.parent.mkdir(parents=True, exist_ok=True)
     # Straight alpha: the loader premultiplies on upload.
     packer.image.save(OUT_PNG, optimize=True)
-
-    manifest = {
-        "image": "/assets/atlas.png",
-        "width": ATLAS,
-        "height": ATLAS,
-        "regions": dict(sorted(packer.regions.items())),
-    }
     OUT_MANIFEST.parent.mkdir(parents=True, exist_ok=True)
-    OUT_MANIFEST.write_text(json.dumps(manifest, indent=2) + "\n")
+    OUT_MANIFEST.write_text(manifest_text(packer))
 
     used = sum(r["width"] * r["height"] for r in packer.regions.values())
     print(
@@ -105,7 +155,8 @@ def main():
         f"and {OUT_MANIFEST.relative_to(ROOT)}: "
         f"{len(packer.regions)} regions, {used * 100 // (ATLAS * ATLAS)}% of the sheet used"
     )
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
