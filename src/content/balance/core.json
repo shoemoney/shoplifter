@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "sim": {
+    "tickHz": 120,
+    "maxTicksPerFrame": 8
+  },
+  "camera": {
+    "baseWorldWidth": 60,
+    "lookAheadFraction": 0.28,
+    "verticalBias": 0.6,
+    "maxZoomOut": 0.12,
+    "referenceSpeed": 42,
+    "positionSmoothing": 0.0008,
+    "zoomSmoothing": 0.02
+  },
+  "render": {
+    "spriteCapacity": 8192,
+    "maxDevicePixelRatio": 2,
+    "clearColor": [0.043, 0.055, 0.086, 1]
+  },
+  "input": {
+    "deadZone": 0.12,
+    "axisCurve": 1.6,
+    "bufferMs": 100
+  }
+}

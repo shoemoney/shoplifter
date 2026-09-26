@@ -1,0 +1,98 @@
+:root {
+  --ink: #e8eef7;
+  --panel: rgba(8, 11, 18, 0.82);
+  --accent: #ffb454;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #070a11;
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  overflow: hidden;
+}
+
+#app {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+}
+
+/* `display` overrides the `hidden` attribute, so hidden elements need it back. */
+[hidden] {
+  display: none !important;
+}
+
+#stage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+#overlay {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 10px 14px;
+  background: var(--panel);
+  border: 1px solid rgba(255, 180, 84, 0.25);
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre;
+  pointer-events: none;
+}
+
+#fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #070a11;
+}
+
+.fallback-card {
+  max-width: 62ch;
+  border: 1px solid rgba(255, 180, 84, 0.3);
+  border-radius: 10px;
+  padding: 28px 32px;
+  background: var(--panel);
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+.fallback-card h1 {
+  margin: 0 0 12px;
+  font-size: 22px;
+  color: var(--accent);
+}
+
+.fallback-card p {
+  margin: 0 0 12px;
+  line-height: 1.6;
+}
+
+.fallback-card code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.9em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.fallback-card ul {
+  margin: 0;
+  padding-left: 20px;
+  line-height: 1.7;
+}
