@@ -1,3 +1,4 @@
+import { resolveAssetUrl } from '@/core/assets.js';
 import type { GpuContext } from './context.js';
 
 export interface AtlasRegion {
@@ -124,8 +125,9 @@ export const loadImageTexture = async (
   url: string,
 ): Promise<{ texture: GPUTexture; width: number; height: number } | null> => {
   try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
+    const source = resolveAssetUrl(url);
+    const response = await fetch(source);
+    if (!response.ok) throw new Error(`HTTP ${response.status} for ${source}`);
     const bitmap = await createImageBitmap(await response.blob(), {
       premultiplyAlpha: 'premultiply',
     });
@@ -164,8 +166,9 @@ export const loadAtlas = async (
   let placeholder = false;
 
   try {
-    const response = await fetch(manifest.image);
-    if (!response.ok) throw new Error(`HTTP ${response.status} for ${manifest.image}`);
+    const source = resolveAssetUrl(manifest.image);
+    const response = await fetch(source);
+    if (!response.ok) throw new Error(`HTTP ${response.status} for ${source}`);
     const blob = await response.blob();
     const bitmap = await createImageBitmap(blob, { premultiplyAlpha: 'premultiply' });
     texture = context.device.createTexture({

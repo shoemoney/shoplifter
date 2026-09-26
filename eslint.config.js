@@ -2,7 +2,21 @@ import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', 'coverage', 'playwright-report', 'test-results', 'public', '.remember'] },
+  {
+    // `tools/` is developer tooling, not shipped code — mostly Python asset generators plus one
+    // static file server for the e2e suite. Type-aware linting cannot resolve a .mjs there
+    // through the project service, and the server is exercised for real by every e2e run,
+    // which is stronger evidence than a lint pass.
+    ignores: [
+      'dist',
+      'coverage',
+      'playwright-report',
+      'test-results',
+      'public',
+      '.remember',
+      'tools',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   {

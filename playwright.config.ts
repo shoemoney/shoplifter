@@ -36,7 +36,9 @@ export default defineConfig({
   // project squatting on the default 4173 (on ::1) silently served the wrong app instead of
   // failing, which reads as a broken build.
   webServer: {
-    command: 'npm run build && npm run preview',
+    // One process serves the build at both the root and under /shoplifter/. Two web servers
+    // each running `npm run build` would race over the same dist/.
+    command: 'npm run build && node tools/serve-e2e.mjs',
     url: 'http://127.0.0.1:4290',
     // Never reuse a server someone else started. Reusing one has produced four false
     // failures in this repo, every one of them "the suite tested a build that was not the
