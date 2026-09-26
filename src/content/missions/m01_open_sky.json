@@ -1,0 +1,308 @@
+{
+  "id": "m01_open_sky",
+  "version": 1,
+  "name": "Operation Open Sky",
+  "biome": "salt_flats",
+  "lengthMeters": 6000,
+  "altitudeCeiling": 500,
+  "targetSeconds": 720,
+  "requiredRescues": 18,
+  "playerSpawn": { "x": 200, "y": 2 },
+
+  "terrainSegments": [
+    { "type": "flat", "startX": 0, "endX": 460, "height": 0 },
+    { "type": "ramp", "startX": 460, "endX": 640, "height": 0, "endHeight": 14 },
+    {
+      "type": "hills",
+      "startX": 640,
+      "endX": 900,
+      "height": 14,
+      "amplitude": 4,
+      "frequency": 0.03
+    },
+    { "type": "ramp", "startX": 900, "endX": 1000, "height": 14, "endHeight": 2 },
+    { "type": "flat", "startX": 1000, "endX": 2250, "height": 2 },
+    { "type": "ramp", "startX": 2250, "endX": 2350, "height": 2, "endHeight": 0 },
+    { "type": "flat", "startX": 2350, "endX": 3500, "height": 0 },
+    { "type": "ramp", "startX": 3500, "endX": 3650, "height": 0, "endHeight": 9 },
+    {
+      "type": "hills",
+      "startX": 3650,
+      "endX": 4750,
+      "height": 9,
+      "amplitude": 3,
+      "frequency": 0.025
+    },
+    { "type": "ramp", "startX": 4750, "endX": 4900, "height": 9, "endHeight": 26 },
+    {
+      "type": "hills",
+      "startX": 4900,
+      "endX": 5800,
+      "height": 26,
+      "amplitude": 9,
+      "frequency": 0.05
+    },
+    { "type": "ramp", "startX": 5800, "endX": 5900, "height": 26, "endHeight": 12 },
+    { "type": "flat", "startX": 5900, "endX": 6000, "height": 12 }
+  ],
+
+  "landingZones": [
+    {
+      "id": "home",
+      "label": "Home Base",
+      "x": 200,
+      "width": 120,
+      "kind": "base",
+      "services": ["refuel", "rearm", "repair", "unload"]
+    },
+    {
+      "id": "dry_lake_pad",
+      "label": "Dry Lake Pad",
+      "x": 2800,
+      "width": 60,
+      "kind": "forward",
+      "services": ["refuel", "rearm"]
+    },
+    {
+      "id": "village_lz",
+      "label": "Village Square",
+      "x": 1500,
+      "width": 90,
+      "kind": "field",
+      "services": []
+    },
+    {
+      "id": "radar_lz",
+      "label": "Radar Camp Clearing",
+      "x": 4200,
+      "width": 40,
+      "kind": "field",
+      "services": []
+    },
+    {
+      "id": "canyon_lz",
+      "label": "Canyon Ledge",
+      "x": 5300,
+      "width": 45,
+      "kind": "field",
+      "services": []
+    }
+  ],
+
+  "civilianGroups": [
+    {
+      "id": "village_group",
+      "site": "Village",
+      "x": 1420,
+      "count": 8,
+      "wounded": 0,
+      "release": "proximity",
+      "spread": 40
+    },
+    {
+      "id": "radar_group",
+      "site": "Radar Camp",
+      "x": 4160,
+      "count": 8,
+      "wounded": 1,
+      "release": "objective",
+      "spread": 26
+    },
+    {
+      "id": "canyon_group",
+      "site": "Canyon Prison",
+      "x": 5280,
+      "count": 8,
+      "wounded": 2,
+      "release": "proximity",
+      "spread": 22
+    }
+  ],
+
+  "enemySockets": [
+    {
+      "id": "ridge_tank",
+      "kind": "lightTank",
+      "x": 780,
+      "side": "ground",
+      "minTier": 0,
+      "cost": 3
+    },
+    {
+      "id": "village_rifle_a",
+      "kind": "rifleInfantry",
+      "x": 1280,
+      "side": "ground",
+      "minTier": 0,
+      "cost": 1
+    },
+    {
+      "id": "village_rifle_b",
+      "kind": "rifleInfantry",
+      "x": 1560,
+      "side": "ground",
+      "minTier": 0,
+      "cost": 1
+    },
+    {
+      "id": "village_rifle_c",
+      "kind": "rifleInfantry",
+      "x": 1720,
+      "side": "ground",
+      "minTier": 0,
+      "cost": 1
+    },
+    {
+      "id": "village_tank",
+      "kind": "lightTank",
+      "x": 1900,
+      "side": "ground",
+      "minTier": 0,
+      "cost": 3
+    },
+    { "id": "lake_jet_west", "kind": "jet", "x": 2300, "side": "air", "minTier": 1, "cost": 5 },
+    { "id": "lake_jet_east", "kind": "jet", "x": 3450, "side": "air", "minTier": 1, "cost": 5 },
+    { "id": "radar_aa", "kind": "aaGun", "x": 4020, "side": "ground", "minTier": 1, "cost": 4 },
+    {
+      "id": "radar_rifle_a",
+      "kind": "rifleInfantry",
+      "x": 4240,
+      "side": "ground",
+      "minTier": 0,
+      "cost": 1
+    },
+    {
+      "id": "radar_rifle_b",
+      "kind": "rifleInfantry",
+      "x": 4420,
+      "side": "ground",
+      "minTier": 0,
+      "cost": 1
+    },
+    {
+      "id": "radar_flank",
+      "kind": "lightTank",
+      "x": 4600,
+      "side": "ground",
+      "minTier": 2,
+      "cost": 3
+    },
+    {
+      "id": "canyon_rpg_a",
+      "kind": "rpgInfantry",
+      "x": 5120,
+      "side": "ground",
+      "minTier": 0,
+      "cost": 2
+    },
+    {
+      "id": "canyon_rpg_b",
+      "kind": "rpgInfantry",
+      "x": 5420,
+      "side": "ground",
+      "minTier": 0,
+      "cost": 2
+    },
+    { "id": "canyon_drone_a", "kind": "drone", "x": 5240, "side": "air", "minTier": 2, "cost": 3 },
+    { "id": "canyon_drone_b", "kind": "drone", "x": 5600, "side": "air", "minTier": 2, "cost": 3 },
+    { "id": "edge_drone", "kind": "drone", "x": 5900, "side": "air", "minTier": 3, "cost": 3 },
+    { "id": "edge_aa", "kind": "aaGun", "x": 5840, "side": "ground", "minTier": 4, "cost": 4 }
+  ],
+
+  "directorPhases": [
+    {
+      "id": "phase_opening",
+      "tier": 0,
+      "trigger": { "type": "missionStart" },
+      "threatPoints": 6,
+      "maxConcurrentAir": 0,
+      "maxConcurrentGround": 3,
+      "reinforcementCooldown": 28
+    },
+    {
+      "id": "phase_first_unload",
+      "tier": 1,
+      "trigger": { "type": "unloadCount", "count": 1 },
+      "threatPoints": 12,
+      "maxConcurrentAir": 1,
+      "maxConcurrentGround": 4,
+      "reinforcementCooldown": 24
+    },
+    {
+      "id": "phase_second_unload",
+      "tier": 2,
+      "trigger": { "type": "unloadCount", "count": 2 },
+      "threatPoints": 18,
+      "maxConcurrentAir": 2,
+      "maxConcurrentGround": 5,
+      "reinforcementCooldown": 20
+    },
+    {
+      "id": "phase_radar_down",
+      "tier": 3,
+      "trigger": { "type": "objective", "objectiveId": "radar_mast" },
+      "threatPoints": 24,
+      "maxConcurrentAir": 2,
+      "maxConcurrentGround": 6,
+      "reinforcementCooldown": 15
+    },
+    {
+      "id": "phase_climax",
+      "tier": 4,
+      "trigger": { "type": "reachX", "x": 5800 },
+      "threatPoints": 30,
+      "maxConcurrentAir": 3,
+      "maxConcurrentGround": 6,
+      "reinforcementCooldown": 12,
+      "maxWaves": 3
+    }
+  ],
+
+  "objectives": [
+    {
+      "id": "rescue_quota",
+      "kind": "primary",
+      "label": "Rescue 18 civilians",
+      "goal": { "type": "rescue", "count": 18 },
+      "requires": []
+    },
+    {
+      "id": "return_home",
+      "kind": "primary",
+      "label": "Return to Home Base",
+      "goal": { "type": "reachZone", "zoneId": "home" },
+      "requires": ["rescue_quota"]
+    },
+    {
+      "id": "radar_mast",
+      "kind": "secondary",
+      "label": "Destroy the radar mast",
+      "goal": { "type": "destroyTarget", "targetId": "radar_mast_prop" },
+      "requires": []
+    },
+    {
+      "id": "intel_case",
+      "kind": "optional",
+      "label": "Recover the intel case",
+      "goal": { "type": "collect", "itemId": "intel_case_prop" },
+      "requires": []
+    }
+  ],
+
+  "weatherVolumes": [
+    {
+      "id": "canyon_gusts",
+      "startX": 4900,
+      "endX": 5800,
+      "wind": -6,
+      "gust": 3.2,
+      "visibility": 0.85
+    },
+    { "id": "lake_shimmer", "startX": 2350, "endX": 3500, "wind": 2, "gust": 0, "visibility": 0.95 }
+  ],
+
+  "checkpoints": [
+    { "id": "cp_launch", "x": 200 },
+    { "id": "cp_dry_lake", "x": 2800, "afterObjective": "rescue_quota" }
+  ]
+}

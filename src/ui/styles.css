@@ -96,3 +96,217 @@ body {
   padding-left: 20px;
   line-height: 1.7;
 }
+
+/* ---- HUD ---------------------------------------------------------------- */
+
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-size: 13px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+}
+
+.hud__counters {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  display: flex;
+  gap: 14px;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.counter small {
+  font-size: 0.55em;
+  opacity: 0.65;
+}
+
+.counter--saved {
+  color: #7ee2a8;
+}
+.counter--lost {
+  color: #ff6b6b;
+}
+.counter--aboard {
+  color: var(--accent);
+}
+
+.hud__objective {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-width: 260px;
+}
+
+.objective__bar,
+.gauge__bar {
+  display: block;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+
+.objective__bar i,
+.gauge__bar i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.hud__status {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  width: 190px;
+}
+
+.hud__weapons {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  width: 190px;
+  text-align: right;
+}
+
+.gauge {
+  display: grid;
+  grid-template-columns: 52px 1fr 40px;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 5px;
+}
+
+.gauge__label {
+  opacity: 0.7;
+}
+
+.gauge__value {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.gauge--danger .gauge__bar i {
+  background: #ff6b6b;
+}
+
+.ammo {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.ammo i {
+  font-style: normal;
+  opacity: 0.6;
+}
+
+.hud__edges .edge {
+  position: absolute;
+  font-size: 15px;
+  opacity: 0.85;
+}
+
+.edge--threat {
+  color: #ffb454;
+}
+.edge--missile {
+  color: #ff5f5f;
+}
+.edge--civilian {
+  color: #7ee2a8;
+}
+.edge--urgent {
+  animation: edge-pulse 0.5s steps(2, end) infinite;
+}
+
+@keyframes edge-pulse {
+  to {
+    opacity: 0.25;
+  }
+}
+
+.hud__landing {
+  position: absolute;
+  bottom: 96px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 14px;
+  border-radius: 6px;
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  min-width: 150px;
+}
+
+.hud__landing[data-projected='hard'] {
+  border-color: #ffb454;
+}
+.hud__landing[data-projected='crash'] {
+  border-color: #ff5f5f;
+}
+
+.landing__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.landing__skids {
+  display: flex;
+  justify-content: center;
+  gap: 22px;
+  margin-top: 6px;
+}
+
+.landing__skids i {
+  width: 16px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.landing__skids i.on {
+  background: #7ee2a8;
+}
+
+.landing__warning {
+  margin-top: 6px;
+  color: #ff5f5f;
+  font-weight: 700;
+  text-align: center;
+}
+
+.hud__strip {
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(560px, 60vw);
+  height: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.hud__strip .mark {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: 11px;
+}
+
+.mark--player {
+  color: var(--accent);
+}
+.mark--threat {
+  color: #ff6b6b;
+}
+.mark--objective {
+  color: #7ee2a8;
+}
