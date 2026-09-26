@@ -5,6 +5,7 @@
 **An original 2D helicopter rescue game for the browser.**
 Fly with weight, land without crushing anyone, and get finite human beings home. 🧑‍🤝‍🧑
 
+[![play](https://img.shields.io/badge/▶_play-arcade.shoemoney.com-ffb454)](https://arcade.shoemoney.com/shoplifter/)
 [![status](https://img.shields.io/badge/status-pre--alpha-orange)](docs/PRD.md)
 [![stack](https://img.shields.io/badge/TypeScript-strict-3178c6)](https://www.typescriptlang.org/)
 [![render](https://img.shields.io/badge/WebGPU-WGSL-005a9c)](https://www.w3.org/TR/webgpu/)
@@ -61,6 +62,8 @@ flowchart LR
 **Target:** 60 FPS at 1080p on integrated graphics, <150 draw calls, <50 MB initial download, restart-to-control under 2 s. ⚡
 
 ## 🚀 Getting started
+
+**Play it now: <https://arcade.shoemoney.com/shoplifter/>** — in the ShoeMoney Arcade.
 
 Requires Node 20+ and a WebGPU-capable desktop browser (Chrome/Edge 113+) on https or localhost.
 

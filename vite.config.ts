@@ -14,7 +14,13 @@ export default defineConfig({
   },
   build: {
     target: 'es2022',
-    sourcemap: true,
+    /**
+     * No source map in the shipped build. The arcade serves zero maps for its other games, and
+     * a 1.1 MB map per deploy buys nothing a reader cannot get from the public MIT repo. (The
+     * map itself was checked and leaks nothing — 72 relative source paths, no local paths and
+     * no username — this is about matching the deploy target, not about secrecy.)
+     */
+    sourcemap: false,
     assetsInlineLimit: 0,
   },
   server: { port: 5173 },
