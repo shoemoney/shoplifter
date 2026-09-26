@@ -367,6 +367,20 @@ export class GameApp {
 
   private onRecovery(event: RecoveryEvent): void {
     this.recovery = event;
+
+    if (event.phase === 'lost') {
+      // Drop every GPU handle immediately. They belong to a device that no longer exists, and
+      // the rebuild below is async: `phase` flips back to 'ready' the moment a new device
+      // arrives, which is BEFORE the new batch and textures are built. Without this, frames in
+      // that window submit work against the dead device and raise GPUValidationError — which
+      // is exactly what the device-loss test kept catching as an intermittent failure.
+      this.batch = null;
+      this.skyBatch = null;
+      this.atlas = null;
+      this.particleUv = null;
+      return;
+    }
+
     if (event.phase === 'ready' && event.attempt > 0) {
       void this.buildGpuResources();
     }
