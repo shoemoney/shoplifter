@@ -13,6 +13,8 @@ import json
 import sys
 from pathlib import Path
 
+from PIL import Image
+
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
@@ -99,6 +101,48 @@ def manifest_text(packer):
     )
 
 
+def straight_alpha_problems(image):
+    """Verifies the atlas is STRAIGHT alpha, not premultiplied.
+
+    The loader hands this PNG to createImageBitmap with premultiplyAlpha:'premultiply', so a
+    premultiplied file gets premultiplied twice and every soft edge darkens. That is the bug
+    this repo shipped: invisible while every sprite was fully opaque, visible the instant
+    anything had a feathered edge.
+
+    This is an ABSOLUTE invariant, which is why it earns its place next to the pixel-equality
+    check. That one compares the committed file against the generator, so it goes blind the
+    moment the generator itself is what premultiplies — both sides agree and the bug is
+    invisible. This check does not care what the generator does.
+
+    A premultiplied pixel can never have a colour channel above its alpha. A straight-alpha one
+    can, and a white glow fading out is exactly that. Absence of semi-transparent pixels is
+    itself a failure: it means the check proves nothing, which is how the bug hid the first time.
+    """
+    data = image.tobytes()
+    soft = 0
+    evidence = 0
+    for i in range(0, len(data), 4):
+        alpha = data[i + 3]
+        if alpha == 0 or alpha == 255:
+            continue
+        soft += 1
+        if max(data[i], data[i + 1], data[i + 2]) > alpha:
+            evidence += 1
+
+    if soft == 0:
+        return [
+            "atlas has no semi-transparent pixels, so straight-alpha cannot be verified "
+            "(this check would pass vacuously — add a sprite with a soft edge)"
+        ]
+    if evidence == 0:
+        return [
+            f"atlas looks PREMULTIPLIED: all {soft} semi-transparent pixels have every colour "
+            "channel at or below their alpha. The loader premultiplies on upload, so this file "
+            "must be straight alpha or soft edges darken twice."
+        ]
+    return []
+
+
 def check(packer):
     """Verifies the committed art still matches what this generator produces.
 
@@ -106,8 +150,6 @@ def check(packer):
     versions, so a byte comparison fails on a CI runner with a different Pillow even though
     every pixel is identical — it checks the encoder, not the art.
     """
-    from PIL import Image
-
     problems = []
 
     if not OUT_PNG.exists():
@@ -121,6 +163,9 @@ def check(packer):
             a, b = committed.tobytes(), fresh.tobytes()
             diff = sum(1 for i in range(0, len(a), 4) if a[i : i + 4] != b[i : i + 4])
             problems.append(f"atlas pixels differ from the generator ({diff} pixels)")
+
+    if OUT_PNG.exists():
+        problems.extend(straight_alpha_problems(Image.open(OUT_PNG).convert("RGBA")))
 
     expected = manifest_text(packer)
     if not OUT_MANIFEST.exists():
