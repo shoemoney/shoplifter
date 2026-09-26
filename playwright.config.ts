@@ -38,7 +38,12 @@ export default defineConfig({
   webServer: {
     command: 'npm run build && npm run preview',
     url: 'http://127.0.0.1:4290',
-    reuseExistingServer: !process.env.CI,
+    // Never reuse a server someone else started. Reusing one has produced four false
+    // failures in this repo, every one of them "the suite tested a build that was not the
+    // build under test" — first another project squatting on port 4173, then my own preview
+    // server left running across a rebuild. A rebuild per run is cheap; a phantom failure is
+    // not, and a phantom PASS would be worse.
+    reuseExistingServer: false,
     timeout: 180_000,
   },
 });

@@ -115,6 +115,44 @@ export const createPlaceholderTexture = (context: GpuContext): GPUTexture =>
   );
 
 /**
+ * Uploads a single image as its own texture. Used for the painterly backdrop, which is a
+ * photographic gradient rather than pixel art — packing it into the sprite atlas would force
+ * nearest sampling on a smooth sky and band it visibly.
+ */
+export const loadImageTexture = async (
+  context: GpuContext,
+  url: string,
+): Promise<{ texture: GPUTexture; width: number; height: number } | null> => {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
+    const bitmap = await createImageBitmap(await response.blob(), {
+      premultiplyAlpha: 'premultiply',
+    });
+    const texture = context.device.createTexture({
+      label: `image:${url}`,
+      size: { width: bitmap.width, height: bitmap.height },
+      format: 'rgba8unorm',
+      usage:
+        GPUTextureUsage.TEXTURE_BINDING |
+        GPUTextureUsage.COPY_DST |
+        GPUTextureUsage.RENDER_ATTACHMENT,
+    });
+    context.device.queue.copyExternalImageToTexture(
+      { source: bitmap, flipY: false },
+      { texture, premultipliedAlpha: true },
+      { width: bitmap.width, height: bitmap.height },
+    );
+    const size = { texture, width: bitmap.width, height: bitmap.height };
+    bitmap.close();
+    return size;
+  } catch {
+    // A missing backdrop is a flat sky, not a broken build.
+    return null;
+  }
+};
+
+/**
  * Decodes an image and uploads it. Failure is not fatal: the caller receives a placeholder
  * texture and a flag, so the mission still runs and the debug overlay can say what is missing.
  */

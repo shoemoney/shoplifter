@@ -10,7 +10,7 @@ import { RenderHost, type RecoveryEvent } from '@/render/webgpu/deviceRecovery.j
 import { SpriteBatch } from '@/render/webgpu/spriteBatch.js';
 import { ParticleKind, ParticleSystem, type ParticleAtlasUv } from '@/render/webgpu/particles.js';
 import { createAudioEngine, type AudioEnginePort } from '@/audio/engine.js';
-import { loadAtlas, type LoadedAtlas } from '@/render/webgpu/textures.js';
+import { loadAtlas, loadImageTexture, type LoadedAtlas } from '@/render/webgpu/textures.js';
 import { loadCoreAtlasManifest } from '@/content/loaders/atlasLoader.js';
 import { BalanceStore, loadFlightBalance } from '@/content/loaders/balanceLoader.js';
 import { loadMission, OPEN_SKY_ID } from '@/content/missions/index.js';
@@ -120,6 +120,16 @@ const TERRAIN_DEPTH = 0.7;
 const TERRAIN_DEPTH_METRES = 26;
 /** Vertical slices of the ground sprite, cycled across columns to break up the grain. */
 const TERRAIN_SLICES = 8;
+/** Painterly backdrop for the Salt Flats biome. */
+const SKY_IMAGE = '/assets/sky_salt_flats.jpg';
+/**
+ * World height the backdrop spans, metres. Deliberately short: the ridge line and horizon glow
+ * live in the bottom quarter of the image, and at 110 m that quarter sat below the visible band
+ * while the plain sky above it stretched into mush.
+ */
+const SKY_HEIGHT_METRES = 46;
+/** How much the backdrop drifts with the camera. Near zero reads as genuinely distant. */
+const SKY_PARALLAX = 0.04;
 /** How much ground the camera may show below the local terrain, metres. */
 const GROUND_MARGIN_METRES = 7;
 /** Seconds between rotor-wash bursts. Every frame floods the pool and buries the terrain. */
@@ -142,6 +152,7 @@ export class GameApp {
   private readonly particles: ParticleSystem;
   private particleUv: ParticleAtlasUv | null = null;
   private washCooldown = 0;
+  private skyAspect = 6;
   private readonly audio: AudioEnginePort;
   private gunCueCooldown = 0;
   private readonly mission: ReturnType<typeof loadMission>;
@@ -153,6 +164,7 @@ export class GameApp {
   private debriefRecorded = false;
 
   private batch: SpriteBatch | null = null;
+  private skyBatch: SpriteBatch | null = null;
   private atlas: LoadedAtlas | null = null;
   private rafId = 0;
   private running = false;
@@ -323,6 +335,26 @@ export class GameApp {
       texture: this.atlas.texture,
       label: 'world-sprites',
     });
+    // The backdrop is its own texture and its own batch: it is a smooth photographic
+    // gradient, so it wants linear sampling, while every sprite wants nearest. One extra draw
+    // call, against a budget of 150.
+    const sky = await loadImageTexture(this.host.gpu, SKY_IMAGE);
+    if (sky) {
+      this.skyBatch = new SpriteBatch(this.host.gpu, {
+        capacity: 8,
+        texture: sky.texture,
+        sampler: this.host.gpu.device.createSampler({
+          label: 'sky-sampler',
+          magFilter: 'linear',
+          minFilter: 'linear',
+          addressModeU: 'clamp-to-edge',
+          addressModeV: 'clamp-to-edge',
+        }),
+        label: 'sky',
+      });
+      this.skyAspect = sky.width / sky.height;
+    }
+
     // Each particle kind gets art that matches what it is, now that the atlas has it.
     this.particleUv = {
       [ParticleKind.Dust]: this.atlas.uv('glow'),
@@ -484,6 +516,8 @@ export class GameApp {
     );
     const view = this.camera.view();
 
+    this.drawSky(view);
+
     batch.begin();
     this.drawBackgroundRange(batch, atlas, view, 0, this.foregroundStart);
     this.drawTerrain(batch, atlas, view);
@@ -519,7 +553,7 @@ export class GameApp {
         },
       ],
     });
-    batch.flush(pass, {
+    const camera = {
       centerX: view.centerX,
       centerY: view.centerY,
       halfWidth: view.halfWidth,
@@ -527,14 +561,48 @@ export class GameApp {
       pixelWidth: this.host.gpu.currentSize.pixelWidth,
       pixelHeight: this.host.gpu.currentSize.pixelHeight,
       timeSeconds: this.world.elapsed,
-    });
+    };
+    this.skyBatch?.flush(pass, camera);
+    batch.flush(pass, camera);
     pass.end();
     this.host.gpu.device.queue.submit([encoder.finish()]);
 
     const stats = batch.lastStats();
-    this.sprites = stats.sprites;
-    this.draws = stats.draws;
+    const skyStats = this.skyBatch?.lastStats();
+    this.sprites = stats.sprites + (skyStats?.sprites ?? 0);
+    this.draws = stats.draws + (skyStats?.draws ?? 0);
     this.renderPrepMs = performance.now() - prepStart;
+  }
+
+  /**
+   * Queues the painterly backdrop. Anchored so its base sits on the nominal ground line and
+   * drifts at a near-zero parallax, which is what makes it read as distant rather than as
+   * wallpaper glued to the camera.
+   */
+  private drawSky(view: { centerX: number; centerY: number; halfWidth: number }): void {
+    const batch = this.skyBatch;
+    if (!batch) return;
+    batch.begin();
+
+    const height = SKY_HEIGHT_METRES;
+    const width = height * this.skyAspect;
+    const drift = view.centerX * SKY_PARALLAX;
+    // Anchored to the ground under the camera rather than to a fixed world height: the ridge
+    // line and horizon glow live at the bottom of the image, and a fixed anchor buries them
+    // under the terrain wherever the ground rises — which is most of this map.
+    const horizon = this.world.terrain.heightAt(view.centerX) - 1.5;
+    // Tile across the viewport; the asset is mirror-extended so the seam is invisible.
+    const first = Math.floor((view.centerX - drift - view.halfWidth) / width) - 1;
+    const last = Math.ceil((view.centerX - drift + view.halfWidth) / width) + 1;
+    for (let i = first; i <= last; i++) {
+      batch.draw({
+        x: drift + (i + 0.5) * width,
+        y: horizon + height / 2,
+        width,
+        height,
+        depth: 0.99,
+      });
+    }
   }
 
   private drawBackgroundRange(
@@ -1198,6 +1266,7 @@ export class GameApp {
     this.debriefScreen.dispose();
     this.audio.dispose();
     this.batch?.destroy();
+    this.skyBatch?.destroy();
     this.host.dispose();
   }
 }
