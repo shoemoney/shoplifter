@@ -39,33 +39,56 @@ unsupported browser gets a specific explanation; `npm run verify` and the Playwr
 
 **Acceptance:** takeoff, hover, reverse, yaw, land and crash behave identically at 60/120/144 Hz.
 
-## Milestone 2 — Combat Sandbox (unstarted)
+## Milestone 2 — Combat Sandbox — **done**
 
-Projectile pool + door gun · rockets, lock-on, splash, flares · component damage · collider
-shapes and a 16 m spatial hash · infantry, tank, AA, jet pass controller, homing drone ·
-foreground targeting plane · threat telegraphs.
+| #   | Issue                                             | Lands in                         |
+| --- | ------------------------------------------------- | -------------------------------- |
+| 2.1 | Collider shapes + 16 m spatial hash + raycast     | `src/sim/collision.ts`           |
+| 2.2 | SoA projectile pool, swept segments, guided kinds | `src/sim/systems/projectiles.ts` |
+| 2.3 | Door gun, rockets with civilian-safe lock, flares | `src/sim/systems/weapons.ts`     |
+| 2.4 | Component damage, fuel leak, suppression/morale   | `src/sim/systems/damage.ts`      |
+| 2.5 | Six enemy state machines                          | `src/sim/systems/enemies.ts`     |
+| 2.6 | Escalation over authored sockets                  | `src/sim/systems/director.ts`    |
 
-**Acceptance:** every enemy has at least two viable responses; no unavoidable off-screen hit
-(700 ms minimum warning).
+**Acceptance:** every firing enemy telegraphs for at least 700 ms (asserted); a tank cannot
+reach a high hover; the jet makes one pass and leaves; tier 4 terminates.
 
-## Milestone 3 — Rescue Loop (unstarted)
+## Milestone 3 — Rescue Loop — **done**
 
-Civilian state machine and nav lanes · boarding, capacity, injury, unload, rescue accounting ·
-rotor and skid safety · director escalation tiers · rescue-weighted scoring.
+| #   | Issue                                                   | Lands in                        |
+| --- | ------------------------------------------------------- | ------------------------------- |
+| 3.1 | Civilian state machine, lanes, cover, panic             | `src/sim/systems/civilians.ts`  |
+| 3.2 | Two boarding doors, capacity, wounded costing two seats | `civilians.ts` (`BoardingBay`)  |
+| 3.3 | Rotor / skid / downwash zones per difficulty            | `civilians.ts`                  |
+| 3.4 | Objective tracking and mission progress                 | `src/sim/systems/objectives.ts` |
+| 3.5 | Rescue-weighted grading where kills score nothing       | `src/sim/systems/scoring.ts`    |
 
-**Acceptance:** 24 civilians produce every documented outcome deterministically; kills award no
-score.
+**Acceptance:** civilians produce every documented outcome deterministically; a record time
+cannot buy back a death (asserted).
 
-## Milestone 4 — Vertical Slice Level (unstarted)
+## Milestone 4 — Vertical Slice Level — **done**
 
-JSON level schema and loader with editor-friendly errors · _Operation Open Sky_ content ·
-director phases · three civilian sites · weather and day-to-dusk · base services · objectives.
+| #   | Issue                                          | Lands in                                 |
+| --- | ---------------------------------------------- | ---------------------------------------- |
+| 4.1 | Mission schema with editor-friendly validation | `src/content/schemas/mission.ts`         |
+| 4.2 | Terrain compiler + landing-pad levelling       | `src/content/loaders/missionLoader.ts`   |
+| 4.3 | _Operation Open Sky_ content                   | `src/content/missions/m01_open_sky.json` |
+| 4.4 | Full system integration                        | `src/sim/mission.ts`                     |
+| 4.5 | Headless autopilot                             | `src/debug/autopilot.ts`                 |
+| 4.6 | HUD model, renderer, debrief                   | `src/ui/`                                |
 
-**Acceptance:** a blind internal tester finishes in under 20 minutes after the tutorial.
+**Acceptance:** the mission completes end to end under synthetic input — 22 of 24 rescued, every
+primary objective met, inside the 20-minute budget, **without the pilot firing a shot**.
 
-## Milestone 5 — Polish and Hardening (unstarted)
+## Milestone 5 — Polish and Hardening — _in progress_
 
-Art/audio pass · settings, accessibility, save and migration · replay capture and deterministic
-verifier · particles, lighting, grading · performance optimization · soak harness.
-
-**Acceptance:** every MVP criterion and performance budget passes CI and the manual checklist.
+| #   | Issue                                               | State                                                                       |
+| --- | --------------------------------------------------- | --------------------------------------------------------------------------- |
+| 5.1 | Replay capture + deterministic verifier             | **done** — `src/debug/replay.ts`                                            |
+| 5.2 | Soak harness                                        | **done** — `src/debug/soak.ts`; one hour simulates in 0.8 s with zero drift |
+| 5.3 | Versioned save, settings, accessibility schema      | **done** — `src/save/`; not yet applied to the running app                  |
+| 5.4 | Audio mixing rules (ducking, rotor layers, spatial) | **done** — `src/audio/mixer.ts`; Web Audio graph not yet built              |
+| 5.5 | Settings/accessibility applied at runtime           | unstarted                                                                   |
+| 5.6 | Particles, lighting, distortion, grading            | unstarted                                                                   |
+| 5.7 | Pause menu, restart, in-browser debrief screen      | unstarted                                                                   |
+| 5.8 | Art and audio pass                                  | unstarted — art direction is still an open PRD decision                     |

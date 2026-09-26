@@ -153,3 +153,75 @@ Layer `depth` is written to clip-space Z but nothing tests against it yet. The b
 therefore sorted far-to-near once at build time and split at the terrain's depth, so opaque ridge
 silhouettes cannot paint over the ground the player is trying to land on. A depth attachment can
 be added later without changing the instance layout.
+
+## M2-1 — Enemies return a fire _intent_ instead of spawning projectiles
+
+`stepEnemy` returns `{ fire: FireIntent | null, ... }` and the integration layer creates the
+projectile. Enemies can then be tested without a projectile pool, and the pool's capacity policy
+stays in one place instead of being re-implemented per enemy.
+
+## M2-2 — Which component a hit lands on is geometry, never a dice roll
+
+The PRD forbids hidden random critical hits. `resolveHitZone` picks the nearest named airframe
+zone to the impact point, so the same shot at the same spot always damages the same component.
+That is also what makes the damage feedback honest: the HUD can say _why_.
+
+## M2-3 — Damaged-rotor wander and infantry inaccuracy use sine sums, not the RNG
+
+Both need to look random and replay identically. Summed incommensurate sines do that without
+consuming RNG draws, which matters because coupling flight or infantry to the shared RNG stream
+would make every other system's draws depend on how much shooting happened.
+
+## M4-1 — Landing zones are levelled by the terrain compiler
+
+An authored landing zone is a prepared surface by definition. Without levelling, a zone placed
+on hilly terrain can exceed the 7-degree tolerance — which does not merely make landing hard, it
+makes the zone unusable, because civilians only approach a _stable_ aircraft. The mission then
+looks correct in the data and cannot be completed.
+
+## M4-2 — A civilian group with no landing zone in reach is a schema error
+
+Found by flying the mission headlessly: the radar camp's zone sat 40 m from its civilians,
+outside the 24 m approach radius, so eight people were unrescuable. Nothing else in the data
+looked wrong. `missionSchema` now rejects it, with the approach radius mirrored as
+`CIVILIAN_APPROACH_RADIUS` rather than imported, so content validation does not depend on the
+simulation.
+
+## M4-3 — Downwash does not apply to a parked helicopter
+
+The knockdown blocks every civilian action and was re-applied every tick, so anyone standing
+inside the 6.5 m wash of a settled aircraft was pinned there forever and could never board.
+Downwash now only applies while the aircraft is arriving or leaving, which is also when it
+physically makes sense.
+
+## M4-4 — The skid crush zone does not apply to someone using the door
+
+The skid zone (1.8 m) is narrower than the boarding reach (2.2 m), so the path to the door
+necessarily crosses it. Someone deliberately boarding a settled aircraft is not someone being
+landed on; the crush case is the aircraft arriving on top of them, which still applies.
+
+## M4-5 — A fuel-system hit adds 0.35 L/s, not 1.5
+
+At 1.5 L/s a single hit emptied a full tank in about 65 seconds — from anywhere on a 6 km map
+that is a delayed kill, not a leak the player can respond to. At 0.35 it is roughly double the
+cruise burn: a real emergency with time to divert. Repair pads now also patch the tank, which
+they did not before, so the leak rate could only ever accumulate.
+
+## M4-6 — The camera's floor tracks the local terrain
+
+The PRD's vertical bias (aircraft at 58–62% screen height) spends more than half the frame below
+ground level when flying low. The camera bounds' `minY` now follows the terrain under the
+aircraft, giving that space back to the sky the threats arrive from.
+
+## M5-1 — Replays are stored unrounded
+
+Rounding axis values to four decimals to shrink the file changed the inputs enough to change the
+physics, and a replay that does not reproduce bit-for-bit is not a replay. Compression comes
+from storing only the ticks where input changed — free for held buttons, nothing for a
+continuously moving analog stick, which is correct.
+
+## M5-2 — The soak harness counts entities rather than measuring memory
+
+A count that grows without bound _is_ the leak, and counts are comparable across machines while
+heap size is not. One simulated hour runs in 0.8 s wall clock (~4,500× real time) with zero
+drift in projectiles, enemies or queued events.

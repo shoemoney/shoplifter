@@ -66,23 +66,35 @@ Requires Node 20+ and a WebGPU-capable desktop browser (Chrome/Edge 113+) on htt
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173 — backquote toggles the debug overlay
-npm run verify     # format + lint + typecheck + unit tests + production build
-npm run test:e2e   # Playwright: boot, device-loss recovery, unsupported-browser screen
+npm run dev        # http://localhost:5173
+npm run verify     # format + lint + typecheck + 563 unit tests + production build
+npm run test:e2e   # Playwright: mission, HUD, device-loss recovery, unsupported browser
 ```
 
-**Milestone 0 is landed.** Measured on Apple M-series (Metal 3), 1920×1080:
+**Controls:** `W`/`S` lift · `A`/`D` thrust · `Q`/`E` yaw left/right through the foreground plane ·
+`Space` boost · `LMB` door gun · `RMB` rockets · `F` flares · `R` interact · `Esc` pause ·
+`` ` `` debug overlay.
 
-| Metric                  | Measured                              | PRD budget               |
-| ----------------------- | ------------------------------------- | ------------------------ |
-| 🎞️ Frame rate           | 60.0 FPS (16.67 ms mean, 16.8 ms p99) | stable 60 @ 1080p        |
-| 🖼️ Sprites / draw calls | 1,956 / **1**                         | < 150 draws, target < 60 |
-| ⚙️ Sim / render prep    | 0.0 ms / 0.2 ms                       | < 3 ms / < 2 ms          |
-| 📦 Bundle               | 131 kB (40 kB gzip)                   | < 50 MB initial          |
-| ⏱️ Dropped ticks        | 0                                     | —                        |
+## 📊 Where it stands
 
-Controls right now are the placeholder sandbox: **W/S/A/D** thrust, **Space** boost, **Esc** pause,
-**`** debug overlay. The real flight model lands in Milestone 1.
+Milestones 0–4 are landed; Milestone 5 is in progress. **Operation Open Sky completes end to
+end.**
+
+| Measured                        | Result                                   | PRD budget               |
+| ------------------------------- | ---------------------------------------- | ------------------------ |
+| 🎞️ Frame rate (Metal 3, 1080p)  | **60.0 FPS**, 16.67 ms mean, 16.8 ms p99 | stable 60 @ 1080p        |
+| 🖼️ Sprites / draw calls         | 1,577 / **1**                            | < 150 draws, target < 60 |
+| ⚙️ Sim / render prep            | 0.1 ms / 0.2 ms                          | < 3 ms / < 2 ms          |
+| 🚁 Full mission, scripted pilot | **22 of 24 rescued, 0 shots fired**      | 18 required              |
+| ⏱️ Mission duration             | inside the 20-minute budget              | 10–12 min target         |
+| 🔁 One-hour soak                | 0.8 s wall clock, **zero drift**         | no growth over an hour   |
+| 🧪 Tests                        | 563 unit · 19 browser                    | —                        |
+| 📦 Bundle                       | 155 kB (47 kB gzip)                      | < 50 MB initial          |
+
+> [!NOTE]
+> The scripted pilot in `src/debug/autopilot.ts` flies the whole mission without firing once —
+> that is an assertion, not a boast. The PRD requires the slice be completable without clearing
+> the map, so it is a test.
 
 Full spec: **[docs/PRD.md](docs/PRD.md)** · plan: **[docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md)** · decisions: **[docs/DECISIONS.md](docs/DECISIONS.md)**
 
