@@ -69,7 +69,7 @@ test.describe('Operation Open Sky in the browser', () => {
     await page.waitForFunction(
       () => (window.shoplifter?.stats()?.sim.enemies ?? 0) > 0,
       undefined,
-      { timeout: 30_000 },
+      { timeout: 60_000 },
     );
     await page.keyboard.up('KeyW');
     expect((await sim(page)).enemies).toBeGreaterThan(0);
@@ -81,7 +81,7 @@ test.describe('Operation Open Sky in the browser', () => {
     await page.waitForFunction(
       () => (window.shoplifter?.stats()?.sim.enemies ?? 0) > 0,
       undefined,
-      { timeout: 30_000 },
+      { timeout: 60_000 },
     );
     await page.keyboard.up('KeyW');
     await expect(page.getByTestId('hud-edges').locator('.edge')).not.toHaveCount(0);
@@ -94,7 +94,7 @@ test.describe('Operation Open Sky in the browser', () => {
     await page.waitForFunction(
       (fuel) => (window.shoplifter?.stats()?.sim.fuel ?? fuel) < fuel - 0.4,
       start.fuel,
-      { timeout: 20_000 },
+      { timeout: 45_000 },
     );
     await page.keyboard.up('KeyW');
     await expect(page.getByTestId('hud-status')).toContainText('%');

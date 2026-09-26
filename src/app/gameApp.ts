@@ -9,6 +9,7 @@ import { Camera, defaultCameraTuning } from '@/render/camera.js';
 import { RenderHost, type RecoveryEvent } from '@/render/webgpu/deviceRecovery.js';
 import { SpriteBatch } from '@/render/webgpu/spriteBatch.js';
 import { ParticleKind, ParticleSystem, type ParticleAtlasUv } from '@/render/webgpu/particles.js';
+import { createAudioEngine, type AudioEnginePort } from '@/audio/engine.js';
 import { loadAtlas, type LoadedAtlas } from '@/render/webgpu/textures.js';
 import { loadCoreAtlasManifest } from '@/content/loaders/atlasLoader.js';
 import { BalanceStore, loadFlightBalance } from '@/content/loaders/balanceLoader.js';
@@ -149,6 +150,8 @@ export class GameApp {
   private readonly particles: ParticleSystem;
   private particleUv: ParticleAtlasUv | null = null;
   private washCooldown = 0;
+  private readonly audio: AudioEnginePort;
+  private gunCueCooldown = 0;
   private readonly mission: ReturnType<typeof loadMission>;
   private readonly pauseScreen: PauseScreen;
   private readonly debriefScreen: DebriefScreen;
@@ -223,6 +226,8 @@ export class GameApp {
     // Its own RNG stream: particles are presentation, and must never consume draws the
     // simulation's determinism depends on.
     this.particles = new ParticleSystem({ rng: new Rng(SCENE_SEED ^ 0x9e3779b9) });
+    // Falls back to a silent engine when there is no AudioContext — the game runs, quietly.
+    this.audio = createAudioEngine({ audio: settings.audio, seed: SCENE_SEED });
     this.pauseScreen = new PauseScreen(elements.pause, {
       resume: () => this.togglePause(),
       restart: () => this.restart(),
@@ -248,6 +253,7 @@ export class GameApp {
     // Taking a hit shakes the frame. Scaled — or zeroed — by the accessibility setting, which
     // is why the scale is applied here rather than baked into the camera.
     world.events.on('mission:playerHit', () => {
+      this.audio.playCue('explosion', { position: world.player.position.x, level: 0.5 });
       this.camera.addShake(0.25 * this.shakeScale);
       this.particles.emitImpactSparks(world.player.position.x, world.player.position.y);
       this.particles.emitSmokeTrail(world.player.position.x, world.player.position.y);
@@ -259,7 +265,12 @@ export class GameApp {
       const at = runtime?.enemy.position ?? world.player.position;
       this.particles.emitExplosion(at.x, at.y);
       this.particles.emitDebris(at.x, at.y);
+      this.audio.playCue('explosion', { position: at.x });
     });
+    world.events.on('mission:unloaded', () =>
+      this.audio.playCue('boarding', { position: world.player.position.x }),
+    );
+    world.events.on('mission:weaponOverheated', () => this.audio.playCue('ui'));
     return world;
   }
 
@@ -269,6 +280,7 @@ export class GameApp {
     applyInputSettings(settings, this.actions);
     this.camera.tuning = applyCameraSettings(settings, this.camera.tuning);
     this.shakeScale = cameraShakeScale(settings);
+    this.audio.setAudioSettings(settings.audio);
     if (this.pauseScreen.isVisible) this.pauseScreen.show(settings);
   }
 
@@ -382,6 +394,15 @@ export class GameApp {
     this.overlay.toggle(false);
     this.camera.setAspect(this.host.gpu.aspect);
     this.camera.snapTo({ x: this.current.x, y: this.current.y, velocityX: 0, velocityY: 0 });
+    // Browsers keep an AudioContext suspended until a gesture; the first click or key unlocks it.
+    const unlock = (): void => {
+      void this.audio.resume();
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+    window.addEventListener('pointerdown', unlock);
+    window.addEventListener('keydown', unlock);
+
     this.running = true;
     this.lastFrameMs = performance.now();
     this.rafId = requestAnimationFrame(this.frame);
@@ -415,6 +436,7 @@ export class GameApp {
     this.simMs = performance.now() - simStart;
 
     this.render(step.alpha);
+    this.updateAudio(Math.min(frameMs, 250) / 1000);
     this.paintUi(nowMs);
     this.maybeDebrief();
   };
@@ -870,6 +892,54 @@ export class GameApp {
     );
   }
 
+  /**
+   * Keeps the rotor stack and the ducking envelope in step with the simulation. Ducking counts
+   * the cues the PRD says must cut through the mix: an incoming missile, and a civilian in
+   * danger under the aircraft.
+   */
+  private updateAudio(dt: number): void {
+    const player = this.world.player;
+    const view = this.camera.view();
+
+    let ducking = 0;
+    const pool = this.world.projectiles;
+    for (let i = 0; i < pool.capacity; i++) {
+      if (!pool.isActive(i) || pool.teamAt(i) !== 'hostile') continue;
+      const kind = pool.kindAt(i);
+      if (kind === 'jetMissile' || kind === 'rpg') ducking++;
+    }
+    const civilianInDanger =
+      player.grounded &&
+      this.world.civilians.some(
+        (civilian) =>
+          civilian.state !== 'dead' &&
+          civilian.state !== 'rescued' &&
+          civilian.state !== 'aboard' &&
+          Math.abs(civilian.position.x - player.position.x) < 4.2,
+      );
+    if (civilianInDanger) ducking++;
+
+    this.audio.update(dt, {
+      rotor: {
+        collective: clamp(this.actions.current.axes.thrustY, 0, 1),
+        engine: player.engine,
+        rotor: player.rotor,
+        load: player.capacity > 0 ? player.passengers.length / player.capacity : 0,
+        grounded: player.grounded,
+      },
+      listenerX: view.centerX,
+      halfWidth: view.halfWidth,
+      activeDuckingCues: ducking,
+    });
+
+    // The gun fires every tick it is held; cueing every shot would be a buzzsaw of voices.
+    this.gunCueCooldown -= dt;
+    if (this.world.weapons.burstElapsed > 0 && this.gunCueCooldown <= 0) {
+      this.audio.playCue('weapon', { position: player.position.x, level: 0.55 });
+      this.gunCueCooldown = 0.09;
+    }
+  }
+
   private simSnapshot(): SimSnapshot {
     const player = this.world.player;
     const counts = tally(this.world.civilians);
@@ -993,6 +1063,7 @@ export class GameApp {
     this.hud.dispose();
     this.pauseScreen.dispose();
     this.debriefScreen.dispose();
+    this.audio.dispose();
     this.batch?.destroy();
     this.host.dispose();
   }

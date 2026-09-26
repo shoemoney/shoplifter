@@ -80,15 +80,32 @@ cannot buy back a death (asserted).
 **Acceptance:** the mission completes end to end under synthetic input — 22 of 24 rescued, every
 primary objective met, inside the 20-minute budget, **without the pilot firing a shot**.
 
-## Milestone 5 — Polish and Hardening — _in progress_
+## Milestone 5 — Polish and Hardening — _mostly done_
 
-| #   | Issue                                               | State                                                                       |
-| --- | --------------------------------------------------- | --------------------------------------------------------------------------- |
-| 5.1 | Replay capture + deterministic verifier             | **done** — `src/debug/replay.ts`                                            |
-| 5.2 | Soak harness                                        | **done** — `src/debug/soak.ts`; one hour simulates in 0.8 s with zero drift |
-| 5.3 | Versioned save, settings, accessibility schema      | **done** — `src/save/`; not yet applied to the running app                  |
-| 5.4 | Audio mixing rules (ducking, rotor layers, spatial) | **done** — `src/audio/mixer.ts`; Web Audio graph not yet built              |
-| 5.5 | Settings/accessibility applied at runtime           | unstarted                                                                   |
-| 5.6 | Particles, lighting, distortion, grading            | unstarted                                                                   |
-| 5.7 | Pause menu, restart, in-browser debrief screen      | unstarted                                                                   |
-| 5.8 | Art and audio pass                                  | unstarted — art direction is still an open PRD decision                     |
+| #    | Issue                                           | State                                                                       |
+| ---- | ----------------------------------------------- | --------------------------------------------------------------------------- |
+| 5.1  | Replay capture + deterministic verifier         | **done** — `src/debug/replay.ts`                                            |
+| 5.2  | Soak harness                                    | **done** — one simulated hour runs in 0.8 s with zero drift                 |
+| 5.3  | Versioned save, settings, accessibility         | **done** — `src/save/`, persisted to IndexedDB                              |
+| 5.4  | Audio: mixing rules + Web Audio graph           | **done** — `src/audio/mixer.ts`, `src/audio/engine.ts`                      |
+| 5.5  | Settings applied at runtime                     | **done** — `src/app/settingsRuntime.ts`                                     |
+| 5.6  | Particles, rotor wash, explosions, camera shake | **done** — `src/render/webgpu/particles.ts`                                 |
+| 5.7  | Pause menu, restart, debrief screen             | **done** — `src/ui/screens.ts`                                              |
+| 5.8  | Art and audio pass                              | **unstarted** — art direction is still an open PRD decision                 |
+| 5.9  | Lighting, distortion, colour grading            | **unstarted** — needs the art direction first                               |
+| 5.10 | Full settings menu and rebinding UI             | **unstarted** — the model and persistence exist; only the screen is missing |
+| 5.11 | Tutorial overlays                               | **unstarted**                                                               |
+
+### What remains before this is a shippable demo
+
+The systems are all present and tested. What is missing is **content and presentation**, both
+of which wait on decisions the PRD itself lists as open:
+
+- **Art.** Everything on screen is a generated placeholder atlas. Pixel-art vs illustrated vs
+  hybrid is an open PRD decision, and nothing should be drawn until it is made.
+- **Audio assets.** The graph synthesises every cue from oscillators. `CUE_LIBRARY` is the seam
+  a real sample pack drops into.
+- **Tutorial overlays**, which the MVP scope requires.
+- **A settings screen.** Every setting is modelled, validated, persisted and applied; only the
+  pause menu's five quick toggles are reachable.
+- **The remaining 11 campaign missions**, which need no new systems — only authored JSON.

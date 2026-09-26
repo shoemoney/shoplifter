@@ -5,6 +5,10 @@ export default defineConfig({
   testDir: './e2e',
   timeout: 45_000,
   fullyParallel: true,
+  // Each test drives a real WebGPU context. Seven at once on one GPU starve each other, and
+  // several tests wait on SIMULATED progress — which stalls when the page is not getting frames.
+  // Four workers keeps the suite fast without making the waits racy.
+  workers: 4,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'list' : 'line',

@@ -54,7 +54,7 @@ flowchart LR
 | 2   | 💥 Combat Sandbox | ✅     | Door gun, rockets, flares, component damage, six enemy types          |
 | 3   | 🚑 Rescue Loop    | ✅     | Civilian state machine, boarding, capacity, injuries, unload, scoring |
 | 4   | 🏜️ Vertical Slice | ✅     | _Operation Open Sky_ — 6 km, 24 civilians, completes end to end       |
-| 5   | ✨ Polish         | 🚧     | Replay + soak done; art, audio graph and settings UI remain           |
+| 5   | ✨ Polish         | 🚧     | Replay, soak, audio, particles, settings, debrief — art pass remains  |
 
 </details>
 
@@ -67,7 +67,7 @@ Requires Node 20+ and a WebGPU-capable desktop browser (Chrome/Edge 113+) on htt
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm run verify     # format + lint + typecheck + 563 unit tests + production build
+npm run verify     # format + lint + typecheck + 605 unit tests + production build
 npm run test:e2e   # Playwright: mission, HUD, device-loss recovery, unsupported browser
 ```
 
@@ -88,7 +88,7 @@ end.**
 | 🚁 Full mission, scripted pilot | **22 of 24 rescued, 0 shots fired**      | 18 required              |
 | ⏱️ Mission duration             | inside the 20-minute budget              | 10–12 min target         |
 | 🔁 One-hour soak                | 0.8 s wall clock, **zero drift**         | no growth over an hour   |
-| 🧪 Tests                        | 563 unit · 19 browser                    | —                        |
+| 🧪 Tests                        | 605 unit · 27 browser                    | —                        |
 | 📦 Bundle                       | 155 kB (47 kB gzip)                      | < 50 MB initial          |
 
 > [!NOTE]
