@@ -101,6 +101,19 @@ end.**
 
 Full spec: **[docs/PRD.md](docs/PRD.md)** · plan: **[docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md)** · decisions: **[docs/DECISIONS.md](docs/DECISIONS.md)**
 
+## 📜 License and mirrors
+
+MIT. Do what you like with the code; see [LICENSE](LICENSE).
+
+|              |                                                                                    |
+| ------------ | ---------------------------------------------------------------------------------- |
+| 🌍 Canonical | <https://github.com/shoemoney/shoplifter>                                          |
+| 🪞 Mirror    | <https://git.shoemoney.ai/shoemoney/shoplifter> — pull-mirrors GitHub every 10 min |
+| 🕹️ Play      | <https://arcade.shoemoney.com/shoplifter/>                                         |
+
+Push to GitHub only. The Forgejo copy is a read-only mirror that syncs itself — committing
+there would be overwritten on its next pull.
+
 ## ⚖️ Legal
 
 Mechanics are documented for research and inspiration. No _Choplifter_ name, trademark, artwork, audio, text, source, or level geometry is used or redistributed here. Code in this repo is MIT licensed.
