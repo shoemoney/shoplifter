@@ -112,7 +112,7 @@ export const createTestRange = ({
 
   for (let i = 0; i < count; i++) {
     const x = i * spacing;
-    let height = 0;
+    let height: number;
     if (x < 220) {
       height = 0; // home pad, dead flat
     } else if (x < 420) {
