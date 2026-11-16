@@ -25,12 +25,12 @@
     "assets:check": "python3 tools/make_atlas.py --check"
   },
   "devDependencies": {
-    "@eslint/js": "^9.37.0",
+    "@eslint/js": "^10.0.0",
     "@playwright/test": "^1.56.0",
     "@types/node": "^26.0.0",
     "@typescript/native": "npm:typescript@^7.0.2",
     "@webgpu/types": "^0.1.64",
-    "eslint": "^9.37.0",
+    "eslint": "^10.0.0",
     "prettier": "^3.6.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "typescript-eslint": "^8.46.0",
